@@ -1,3 +1,5 @@
+import { defaultProductDescription } from './productDescriptions'
+
 // ── Turkish Lowercase Helper ──
 export function trLower(s) {
   return (s || '').toLocaleLowerCase('tr-TR')
@@ -109,14 +111,5 @@ export function getItemImage(item) {
 // ── Default Product Descriptions ──
 export function getItemDescription(item) {
   if (item?.description) return item.description
-  const n = trLower(item?.name || '')
-  if (n.includes('çikolata')) return null
-
-  if (n.includes('teneke kola') || n.includes('kutu kola')) {
-    return 'Soğuk servis edilen ferahlatıcı kutu teneke kola (330ml)'
-  }
-  if (n.includes('şişe kola') || n.includes('cam kola')) {
-    return 'Buz gibi ferahlatıcı klasik cam şişe kola (250ml)'
-  }
-  return null
+  return defaultProductDescription(item)
 }
