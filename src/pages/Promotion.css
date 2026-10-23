@@ -1,0 +1,11 @@
+.promotion-settings { display: grid; gap: 18px; max-width: 640px; padding: 24px; border: 1px solid #31534b; border-radius: 20px; background: #191512; }
+.promotion-settings h2, .promotion-settings p { margin: 0; }
+.promotion-preview { display: flex; align-items: center; gap: 18px; }
+.promotion-preview img { width: 100px; height: 100px; object-fit: contain; border-radius: 14px; background: white; }
+.welcome-promotion-backdrop { position: fixed; inset: 0; z-index: 200000; background: #000b; backdrop-filter: blur(8px); display: grid; place-items: center; padding: 20px; }
+.welcome-promotion { position: relative; width: min(100%, 420px); max-height: 90dvh; overflow-y: auto; border-radius: 26px; background: #201915; color: #faf6f0; border: 1px solid #5be7c470; box-shadow: 0 20px 80px #0009; }
+.promotion-image { display: block; width: 100%; height: clamp(180px, 40vh, 300px); object-fit: contain; background: white; }
+.promotion-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #171310; color: white; cursor: pointer; }
+.promotion-copy { padding: 24px; display: grid; gap: 16px; }
+.promotion-copy span { font-size: 11px; font-weight: 800; letter-spacing: .14em; color: #5be7c4; }
+.promotion-copy h2, .promotion-copy p { margin: 0; }

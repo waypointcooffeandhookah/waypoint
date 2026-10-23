@@ -1,0 +1,147 @@
+/* ========================================
+   LOGIN PAGE
+   © 2024 Mehmet Ali ERDOĞAN
+   ======================================== */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─ Glow blobs ─ */
+.login-page::before,
+.login-page::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.login-page::before {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(90, 46, 30, 0.35) 0%, transparent 70%);
+  top: -100px; right: -100px;
+}
+.login-page::after {
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(17, 87, 84, 0.3) 0%, transparent 70%);
+  bottom: -80px; left: -80px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 40px 36px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  z-index: 1;
+}
+
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 28px;
+  gap: 12px;
+}
+.login-logo-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 107, 53, 0.45);
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.35), 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+.login-logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.login-logo-name {
+  display: block;
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffffff 0%, #fcd5b8 50%, #ff6b35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.login-logo-sub {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ff9f68;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.login-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.login-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent-gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-accent);
+  margin-top: 4px;
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(255,107,53,0.45); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.login-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.login-footer span {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  margin-bottom: 24px;
+  transition: var(--transition-fast);
+}
+.back-link:hover { color: var(--text-primary); }

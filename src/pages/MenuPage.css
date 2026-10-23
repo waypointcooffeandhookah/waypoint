@@ -1,0 +1,1181 @@
+/* ================================================================
+   WAYPOINT — ULTRA LUXURY QR MENÜ & AÇILIŞ VİTRİNİ
+   Orijinal Coffee & Hookah (Koyu Kahve + Zümrüt Yeşil + Krem) Paleti
+   © 2024 Mehmet Ali ERDOĞAN
+   ================================================================ */
+
+/* ─── Keyframe Animasyonları ─── */
+@keyframes pulse-teal {
+  0%, 100% {
+    opacity: 0.92;
+    transform: scale(1);
+    box-shadow: 0 16px 36px rgba(17, 87, 84, 0.45);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.025);
+    box-shadow: 0 20px 48px rgba(78, 205, 196, 0.55), 0 0 28px rgba(26, 123, 118, 0.5);
+  }
+}
+
+.pulse-teal {
+  animation: 3.6s ease-in-out infinite pulse-teal;
+}
+
+@keyframes ipek-soft-enter {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+.ipek-soft-enter {
+  animation: 0.75s cubic-bezier(0.22, 1, 0.36, 1) both ipek-soft-enter;
+}
+
+@keyframes ipek-page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ipek-page-enter {
+  animation: 0.35s cubic-bezier(0.22, 1, 0.36, 1) both ipek-page-enter;
+}
+
+@keyframes waypoint-emblem-reveal {
+  from { opacity: 0; transform: translateY(12px) scale(.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes waypoint-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes waypoint-beacon {
+  0%, 100% { opacity: .35; transform: scale(.96); }
+  50% { opacity: .7; transform: scale(1.08); }
+}
+@keyframes waypoint-light-pass {
+  0%, 65% { transform: translateX(-170%) rotate(-24deg); opacity: 0; }
+  72% { opacity: .45; }
+  88%, 100% { transform: translateX(170%) rotate(-24deg); opacity: 0; }
+}
+.ipek-logo-enter {
+  animation: waypoint-emblem-reveal 1.1s cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes ipek-scroll-cue {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+.ipek-scroll-cue {
+  display: inline-block;
+  animation: 1.8s ease-in-out infinite ipek-scroll-cue;
+}
+
+@keyframes ipek-modal-backdrop {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.ipek-modal-backdrop-enter {
+  animation: 0.24s ease-out both ipek-modal-backdrop;
+}
+
+@keyframes ipek-modal-sheet {
+  0% {
+    transform: translateY(105%) scale(0.97);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+.ipek-modal-sheet-enter {
+  animation: 0.38s cubic-bezier(0.22, 1, 0.36, 1) both ipek-modal-sheet;
+}
+
+.ipek-pressable {
+  transition: transform 0.16s ease, background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ipek-pressable:active {
+  transform: scale(0.965) !important;
+}
+
+/* ─── 1. ULTRA LUXURY AÇILIŞ EKRANI (WAYPOINT KOYU PALETİ) ─── */
+.hero-viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 18%, #2e150c 0%, #170d08 45%, #0c0b0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y;
+}
+
+.hero-bg-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 12%, rgba(26, 123, 118, 0.22), transparent 48%),
+              linear-gradient(135deg, #2e150c 0%, #160e0a 50%, #0c0b0a 100%);
+  pointer-events: none;
+}
+
+.cinematic-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(rgba(12, 11, 10, 0.85) 0%, rgba(12, 11, 10, 0) 30% 70%, #0c0b0a 100%);
+}
+
+.hero-shell {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 440px;
+  width: 100%;
+  padding: 40px 24px 50px;
+}
+
+.hero-logo-wrap {
+  position: relative;
+  isolation: isolate;
+  width: clamp(96px, 26vw, 132px);
+  aspect-ratio: 1;
+  margin: 0 auto 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.hero-logo-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -11px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: #5be7c490;
+  border-right-color: #c6a47780;
+  border-bottom-color: #5be7c420;
+  animation: waypoint-orbit 22s linear infinite;
+  pointer-events: none;
+}
+.hero-logo-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #4ecdc430, transparent 70%);
+  animation: waypoint-beacon 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.hero-logo-medallion {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.hero-logo-medallion::after {
+  content: '';
+  position: absolute;
+  inset: -25% 25%;
+  background: linear-gradient(90deg, transparent, #fff8, transparent);
+  animation: waypoint-light-pass 10s ease-in-out 1s infinite both;
+  pointer-events: none;
+}
+
+.hero-logo-img {
+  width: clamp(96px, 26vw, 132px);
+  height: auto;
+  border-radius: 50%;
+  margin-bottom: 0;
+  transform-origin: center;
+  backface-visibility: hidden;
+  filter: drop-shadow(0 14px 28px rgba(26, 123, 118, 0.45));
+  border: 3px solid rgba(78, 205, 196, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-logo-wrap::before, .hero-logo-wrap::after, .hero-logo-medallion::after,
+  .hero-logo-img.ipek-logo-enter { animation: none; }
+  .hero-logo-medallion::after { display: none; }
+}
+
+.hero-tagline-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.hero-divider-line {
+  width: 52px;
+  height: 1.5px;
+}
+.hero-divider-line.left {
+  background: linear-gradient(90deg, transparent, rgba(78, 205, 196, 0.7));
+}
+.hero-divider-line.right {
+  background: linear-gradient(90deg, rgba(78, 205, 196, 0.7), transparent);
+}
+
+.hero-tagline-text {
+  font-size: 0.82rem;
+  color: #5be7c4;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.hero-brand-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(3.8rem, 16vw, 5.6rem);
+  font-weight: 800;
+  color: #f8f6f2;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 30px rgba(26, 123, 118, 0.3);
+}
+
+.hero-brand-subtitle {
+  margin-top: 14px;
+  font-size: clamp(0.85rem, 3vw, 1rem);
+  color: #beb4a8;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.hero-brand-desc {
+  margin-top: 10px;
+  font-size: clamp(0.85rem, 3.2vw, 0.95rem);
+  color: #a89f94;
+  font-weight: 600;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.hero-cta-btn {
+  margin-top: 32px;
+  height: 62px;
+  width: 100%;
+  max-width: 276px;
+  border-radius: 9999px;
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 50%, #844329 100%);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: clamp(0.96rem, 3.8vw, 1.1rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hero-social-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+.hero-social-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 18px;
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .045);
+  color: #eee9e1;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .2s, border-color .2s;
+}
+.hero-social-button:hover:not(:disabled), .hero-social-button:focus-visible {
+  background: rgba(255, 255, 255, .1);
+  border-color: #5be7c4;
+}
+.hero-social-button:disabled { cursor: default; }
+.hero-scroll-cue-box {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 8px 16px;
+}
+
+.hero-scroll-cue-text {
+  font-size: 0.78rem;
+  color: #5be7c4;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 900;
+}
+
+.hero-scroll-cue-arrow {
+  color: #5be7c4;
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* ─── 2. MENÜ GENEL DÜZENİ (ORİJİNAL KOYU TEMA) ─── */
+.menu-root-wrap {
+  min-height: 100dvh;
+  background: #0c0b0a;
+  color: #f8f6f2;
+}
+
+.menu-content-hidden {
+  display: none !important;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: #0c0b0a;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 50px;
+  position: relative;
+}
+
+/* ─── 3. HEADER (Waypoint İmzası Koyu Kahve + Zümrüt) ─── */
+.menu-header {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(62, 30, 18, 0.96) 0%, rgba(38, 20, 14, 0.94) 35%, rgba(12, 48, 46, 0.94) 70%, rgba(17, 87, 84, 0.96) 100%);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(26, 123, 118, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(232, 218, 194, 0.08) inset;
+  padding: 12px 18px 10px;
+  z-index: 100;
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.menu-header.header-hidden {
+  transform: translate3d(0, -100%, 0);
+  pointer-events: none;
+}
+
+.menu-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.menu-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.menu-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(78, 205, 196, 0.55);
+  box-shadow: 0 0 16px rgba(17, 87, 84, 0.4), 0 4px 10px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+.menu-logo-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.menu-logo-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.menu-logo-sub {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #5be7c4;
+  text-transform: uppercase;
+}
+
+/* Arama Çubuğu */
+.menu-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.menu-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #786f66;
+  pointer-events: none;
+}
+.menu-search {
+  width: 100%;
+  height: 42px;
+  padding: 0 38px 0 40px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: #f8f6f2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+.menu-search:focus {
+  outline: none;
+  border-color: #5be7c4;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.25);
+}
+.menu-search-clear {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #beb4a8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── 4. KATEGORİ HİKAYE ÇUBUĞU (STORIES BAR) ─── */
+.stories-bar {
+  padding: 12px 16px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+}
+.stories-bar::-webkit-scrollbar {
+  display: none;
+}
+.stories-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.story-item {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex: 0 0 84px;
+  width: 84px;
+  min-width: 0;
+  transition: transform 0.2s ease;
+}
+.story-item:active {
+  transform: scale(0.95);
+}
+
+.story-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: rgba(26, 123, 118, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+.story-ring.active {
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 50%, #4ecdc4 100%);
+  box-shadow: 0 0 16px rgba(26, 123, 118, 0.6);
+}
+
+.story-img-wrap {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #181412;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.5px solid #181412;
+}
+.story-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.story-label {
+  width: 100%;
+  min-height: 2.7em;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  font-weight: 700;
+  color: #beb4a8;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease;
+}
+.story-item.active .story-label {
+  color: #5be7c4;
+  font-weight: 900;
+}
+
+/* Kategori Başlığı */
+.category-title-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 20px 10px;
+}
+.category-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  letter-spacing: -0.02em;
+}
+.category-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #5be7c4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ─── 5. ÜRÜN VİTRİN KARTLARI (EDITORIAL CARDS - KOYU TEMA) ─── */
+.menu-feed {
+  padding: 4px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editorial-card {
+  contain: layout paint;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(24, 20, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  text-decoration: none;
+}
+.editorial-card:hover {
+  transform: translateY(-2.5px);
+  border-color: rgba(78, 205, 196, 0.45);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.6), 0 0 16px rgba(26, 123, 118, 0.25);
+}
+.editorial-card-out {
+  opacity: 0.65;
+  filter: saturate(0.65);
+}
+
+.editorial-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+}
+
+/* Sol Resim Kutusu */
+.editorial-card-img-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.ipek-card-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.editorial-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.editorial-card:hover .editorial-card-img {
+  transform: scale(1.08);
+}
+
+.editorial-card-img.editorial-card-img-frozen {
+  object-fit: cover;
+  object-position: 50% 45%;
+  padding: 0;
+}
+
+.editorial-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(17, 87, 84, 0.2) 0%, rgba(17, 87, 84, 0.05) 100%);
+}
+
+.editorial-card-out-tag {
+  position: absolute;
+  inset-inline: 6px;
+  bottom: 6px;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 9999px;
+  padding: 2px 4px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.editorial-card-out-tag span {
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f87171;
+}
+
+.editorial-card-group-pill {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(12, 11, 10, 0.88);
+  border: 1px solid rgba(78, 205, 196, 0.4);
+  border-radius: 9999px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.editorial-card-group-pill span {
+  font-size: 0.56rem;
+  font-weight: 900;
+  color: #5be7c4;
+}
+
+/* Sağ Bilgi ve Fiyat Alanı */
+.editorial-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.editorial-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.editorial-card-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #4ecdc4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editorial-variant-count-badge {
+  font-size: 0.56rem;
+  font-weight: 900;
+  color: #5be7c4;
+  background: rgba(17, 87, 84, 0.35);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.editorial-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.editorial-card-desc {
+  font-size: 0.76rem;
+  color: #beb4a8;
+  font-weight: 500;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.editorial-card-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.editorial-card-price {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.04rem;
+  font-weight: 900;
+  color: #5be7c4;
+  letter-spacing: -0.01em;
+}
+
+.editorial-card-action-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 87, 84, 0.35);
+  color: #5be7c4;
+  border: 1px solid rgba(78, 205, 196, 0.3);
+  transition: transform 0.22s ease, background 0.22s ease, color 0.22s ease;
+}
+.editorial-card:hover .editorial-card-action-circle {
+  transform: translate(2px, -2px);
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 100%);
+  color: #ffffff;
+}
+
+/* ─── 6. LÜKS ÜRÜN VİTRİN MODALI (BOTTOM SHEET - KOYU TEMA) ─── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88dvh;
+  background: linear-gradient(180deg, #221a17 0%, #15110f 100%);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  border: 1px solid rgba(78, 205, 196, 0.35);
+  border-bottom: none;
+  box-shadow: 0 -16px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(26, 123, 118, 0.25);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 100000;
+}
+
+.sheet-handle-wrap {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4.5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.modal-hero-img-wrap {
+  flex-shrink: 0;
+  position: relative;
+  width: 100%;
+  height: clamp(230px, 46vw, 320px);
+  background: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.modal-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 18px;
+  transition: transform 0.4s ease;
+}
+
+.modal-hero-frozen {
+  height: clamp(260px, 65vw, 320px);
+}
+
+.modal-hero-frozen .modal-hero-img {
+  object-fit: cover;
+  object-position: center;
+  padding: 0;
+  transform: scale(1.15);
+}
+
+.modal-hero-badge-row {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+}
+
+.modal-hero-cat-tag {
+  background: #115754;
+  color: #5be7c4;
+  border: 1px solid rgba(78, 205, 196, 0.35);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modal-hero-variant-tag {
+  background: rgba(0, 0, 0, 0.65);
+  color: #5be7c4;
+  border: 1px solid rgba(78, 205, 196, 0.35);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.modal-close-round-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 25;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8f6f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.modal-no-img-header {
+  padding: 24px 20px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-sheet-content {
+  padding: 20px 22px 28px;
+  flex: 1;
+}
+
+.modal-sheet-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.modal-sheet-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  line-height: 1.2;
+}
+
+.modal-sheet-price {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #5be7c4;
+  white-space: nowrap;
+}
+
+.modal-sheet-desc {
+  font-size: 0.88rem;
+  color: #beb4a8;
+  font-weight: 500;
+  line-height: 1.48;
+  margin-bottom: 20px;
+}
+
+/* Çeşitler & Seçenekler */
+.modal-variants-block {
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-variants-block-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  color: #5be7c4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.modal-variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-variant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+.modal-variant-row:hover {
+  background: rgba(26, 123, 118, 0.16);
+  border-color: rgba(78, 205, 196, 0.35);
+}
+.modal-variant-unavailable {
+  opacity: 0.55;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.modal-variant-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.modal-variant-img-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-variant-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.modal-variant-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.modal-variant-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8f6f2;
+}
+
+.modal-variant-subdesc {
+  font-size: 0.74rem;
+  color: #beb4a8;
+  font-weight: 500;
+}
+
+.modal-variant-out-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #f87171;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-variant-price-wrap {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.modal-variant-price {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #5be7c4;
+}
+
+.modal-sheet-footer-note {
+  margin-top: 24px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(17, 87, 84, 0.2);
+  border: 1px dashed rgba(78, 205, 196, 0.35);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #beb4a8;
+}
+
+/* ─── 7. FOOTER & DİĞER DURUMLAR ─── */
+.menu-footer {
+  margin-top: auto;
+  padding: 24px 20px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+  color: var(--text-muted, #786f66);
+}
+.menu-footer span {
+  font-family: 'Playfair Display', serif;
+  font-weight: 800;
+  color: #5be7c4;
+}
+.menu-footer-sub {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: #5a544c;
+}
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 12px;
+}
+.no-results h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f8f6f2;
+}
+.no-results p {
+  font-size: 0.85rem;
+  color: var(--text-muted, #786f66);
+}
+
+.loading-screen {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #5be7c4;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(78, 205, 196, 0.2);
+  border-top-color: #5be7c4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
