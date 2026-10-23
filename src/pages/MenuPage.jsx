@@ -430,7 +430,7 @@ export default function MenuPage() {
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowHero(true) } }}
             >
               <img
-                src={`${import.meta.env.BASE_URL}logo.png`}
+                src={`${import.meta.env.BASE_URL}logo-balanced.png`}
                 alt="Waypoint Logo"
                 className="menu-logo-img"
               />
@@ -604,7 +604,7 @@ function OpeningHeroScreen({ onEnter }) {
         <div className="hero-logo-wrap">
           <span className="hero-logo-medallion">
           <img
-            src={`${import.meta.env.BASE_URL}logo.png`}
+            src={`${import.meta.env.BASE_URL}logo-balanced.png`}
             alt="Waypoint Logo"
             className="ipek-logo-enter hero-logo-img"
           />

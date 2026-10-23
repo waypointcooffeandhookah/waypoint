@@ -57,7 +57,7 @@ export default function AdminPage() {
       <header className="admin-header">
         <div className="admin-header-brand">
           <img
-            src={`${import.meta.env.BASE_URL}logo.png`}
+            src={`${import.meta.env.BASE_URL}logo-balanced.png`}
             alt="Waypoint Logo"
             className="admin-header-logo-img"
           />

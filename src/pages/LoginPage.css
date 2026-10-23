@@ -58,7 +58,7 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   border: 2px solid rgba(255, 107, 53, 0.45);
   box-shadow: 0 0 20px rgba(255, 107, 53, 0.35), 0 4px 12px rgba(0, 0, 0, 0.6);
 }
