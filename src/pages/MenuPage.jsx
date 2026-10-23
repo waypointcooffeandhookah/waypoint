@@ -93,14 +93,14 @@ const GROUP_RULES = [
     id: 'grp-tost',
     coverImage: getAssetUrl('images/kasarli-tost.jpg'),
     name: 'Tost Çeşitleri',
-    description: 'Kaşarlı ya da karışık; çayın yanına sıcacık bir tost.',
+    description: null,
     match: (item) => trLower(item.name).includes('tost'),
   },
   {
     id: 'grp-kofte',
     coverImage: getAssetUrl('images/kofte.jpg'),
     name: 'Köfte Seçenekleri',
-    description: 'Ekmek arasında veya tabakta, nasıl seversen.',
+    description: null,
     match: (item) => {
       const n = trLower(item.name)
       return n === 'köfte' || n === 'köfte porsiyon'
@@ -311,7 +311,7 @@ export default function MenuPage() {
           return {
             ...it,
             image_url: img || null,
-            description: it.description || desc || null,
+            description: desc || null,
           }
         })
         setItems(mappedItems)
@@ -688,7 +688,7 @@ const EditorialProductCard = memo(function EditorialProductCard({ item, delay, o
   }
 
   const categoryName = item.categories?.name || 'Waypoint Seçkisi'
-  const desc = item.description || getItemDescription(item)
+  const desc = getItemDescription(item)
 
   return (
     <article
@@ -831,8 +831,8 @@ function ProductVitrinModal({ product, onClose }) {
             <h2 id="product-modal-title" className="modal-sheet-title">{product.name}</h2>
           </div>
 
-          {product.description && (
-            <p className="modal-sheet-desc">{product.description}</p>
+          {getItemDescription(product) && (
+            <p className="modal-sheet-desc">{getItemDescription(product)}</p>
           )}
 
           {/* If Product has Variants (e.g. Kola -> Cam Şişe & Teneke) */}
@@ -849,7 +849,7 @@ function ProductVitrinModal({ product, onClose }) {
                   const p = Number(v.price)
                   const hasPrice = !isNaN(p) && p > 0
                   const vDisplayName = v.name === 'Şişe Kola' ? 'Cam Şişe Kola' : v.name
-                  const vDesc = v.description || getItemDescription(v)
+                  const vDesc = getItemDescription(v)
 
                   return (
                     <div

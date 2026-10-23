@@ -110,6 +110,7 @@ export function getItemImage(item) {
 
 // ── Default Product Descriptions ──
 export function getItemDescription(item) {
+  if (trLower(item?.categories?.name || item?.category_name).trim() === 'yiyecekler') return null
   if (item?.description) return item.description
   return defaultProductDescription(item)
 }
