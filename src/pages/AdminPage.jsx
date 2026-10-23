@@ -438,7 +438,7 @@ function ItemModal({ data, onClose, onSaved, categories }) {
               onChange={e => set('description', e.target.value)} rows={3} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="admin-form-columns">
             <div className="input-group">
               <label className="input-label">Fiyat (₺) *</label>
               <input className="input" type="number" min={0} step="0.01" placeholder="0.00"
