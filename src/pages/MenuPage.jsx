@@ -382,7 +382,6 @@ export default function MenuPage() {
     <div className="container">
       <div className="loading-screen">
         <div className="spinner" />
-        <span>Menü hazırlanıyor…</span>
       </div>
     </div>
   )
