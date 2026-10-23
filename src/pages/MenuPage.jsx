@@ -353,10 +353,10 @@ export default function MenuPage() {
     return groupCatalog(catalogItems)
   }, [items, categories])
 
-  // Arama ve kategori filtreleme
+  // Arama tüm menüyü kapsar; kategori yalnızca arama boşken uygulanır.
   const filtered = useMemo(() => {
     let list = groupedCatalog
-    if (activeId !== 'all') {
+    if (!deferredSearch.trim() && activeId !== 'all') {
       list = list.filter(i => i.category_id === activeId)
     }
     if (deferredSearch.trim()) {
