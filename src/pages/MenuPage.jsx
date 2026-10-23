@@ -93,14 +93,14 @@ const GROUP_RULES = [
     id: 'grp-tost',
     coverImage: getAssetUrl('images/kasarli-tost.jpg'),
     name: 'Tost Çeşitleri',
-    description: 'Taze kaşarlı ve karışık zengin seçenekler',
+    description: 'Kaşarlı ya da karışık; çayın yanına sıcacık bir tost.',
     match: (item) => trLower(item.name).includes('tost'),
   },
   {
     id: 'grp-kofte',
     coverImage: getAssetUrl('images/kofte.jpg'),
     name: 'Köfte Seçenekleri',
-    description: 'Ekmek arası ve porsiyon seçenekleri',
+    description: 'Ekmek arasında veya tabakta, nasıl seversen.',
     match: (item) => {
       const n = trLower(item.name)
       return n === 'köfte' || n === 'köfte porsiyon'
