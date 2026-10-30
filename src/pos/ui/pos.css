@@ -1,0 +1,289 @@
+/* ========================================
+   WAYPOINT RESTAURANT OS — ORTAK TASARIM SİSTEMİ
+   QR menünün renk, tipografi ve kart dilini personel ekranlarına taşır.
+   Değişkenler src/index.css :root içinden gelir.
+   ======================================== */
+
+:root {
+  --pos-teal: #5be7c4;
+  --pos-teal-soft: rgba(17, 87, 84, 0.35);
+  --pos-teal-line: rgba(78, 205, 196, 0.3);
+  --pos-card: rgba(24, 20, 18, 0.95);
+  --pos-sheet: linear-gradient(180deg, #221a17 0%, #15110f 100%);
+  --pos-header-gradient: linear-gradient(135deg, rgba(62, 30, 18, 0.96) 0%, rgba(38, 20, 14, 0.94) 35%, rgba(12, 48, 46, 0.94) 70%, rgba(17, 87, 84, 0.96) 100%);
+  --pos-touch: 44px;
+}
+.pos-app { min-height: 100dvh; }
+
+/* ─── Başlık (QR menü .menu-header ile aynı) ─── */
+.pos-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--pos-header-gradient);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(26, 123, 118, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(232, 218, 194, 0.08) inset;
+}
+.pos-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px 16px;
+}
+.pos-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pos-brand-logo {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  object-fit: contain;
+  border: 2px solid rgba(78, 205, 196, 0.55);
+  box-shadow: 0 0 16px rgba(17, 87, 84, 0.4), 0 4px 10px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+.pos-brand-text { display: flex; flex-direction: column; min-width: 0; }
+.pos-brand-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.pos-brand-sub {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--pos-teal);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pos-header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pos-staff-chip {
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cream-gold);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pos-demo-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: #fde7b0;
+  background: linear-gradient(90deg, rgba(196, 150, 70, 0.28), rgba(132, 67, 41, 0.28));
+  border-top: 1px solid rgba(245, 208, 122, 0.3);
+}
+.pos-demo-banner svg { flex-shrink: 0; margin-top: 1px; }
+.pos-demo-banner strong { letter-spacing: 0.08em; color: #f5d07a; }
+.pos-demo-banner a, .pos-demo-banner button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #f5d07a;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ─── Tipografi ─── */
+.pos-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #f8f6f2;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.pos-muted { font-size: 0.8rem; color: var(--text-secondary); }
+
+/* ─── Düğmeler ─── */
+.pos-icon-btn {
+  width: var(--pos-touch); height: var(--pos-touch);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--pos-teal-line);
+  background: var(--pos-teal-soft);
+  color: var(--pos-teal);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.pos-icon-btn:hover:not(:disabled) { background: linear-gradient(135deg, #115754 0%, #1a7b76 100%); color: #fff; }
+.pos-icon-btn:disabled { opacity: 0.6; cursor: default; }
+
+.pos-btn {
+  min-height: var(--pos-touch);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 20px;
+  border-radius: var(--radius-full);
+  font: 700 0.92rem 'Inter', sans-serif;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.pos-btn:active:not(:disabled) { transform: scale(0.97); }
+.pos-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.pos-btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 60%, #22928b 100%);
+  box-shadow: 0 8px 24px rgba(26, 123, 118, 0.38);
+}
+.pos-btn-ghost {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.pos-btn-ghost:hover:not(:disabled) { border-color: var(--pos-teal-line); background: rgba(255, 255, 255, 0.1); }
+
+/* ─── Çipler ─── */
+.pos-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.pos-chips-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 2px 16px 4px;
+  scroll-padding-inline: 16px;
+}
+.pos-chips-scroll::-webkit-scrollbar { display: none; }
+.pos-chips.dimmed { opacity: 0.5; }
+.pos-chip {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--radius-full);
+  font: 600 0.82rem 'Inter', sans-serif;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+}
+.pos-chip.active {
+  color: #fff;
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 100%);
+  border-color: rgba(78, 205, 196, 0.55);
+  box-shadow: 0 0 14px rgba(26, 123, 118, 0.35);
+}
+
+/* ─── Segment (Sepet / Adisyon) ─── */
+.pos-segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pos-segment button {
+  flex: 1;
+  min-height: 40px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 700 0.84rem 'Inter', sans-serif;
+  cursor: pointer;
+}
+.pos-segment button.active { background: var(--pos-teal-soft); color: var(--pos-teal); box-shadow: inset 0 0 0 1px var(--pos-teal-line); }
+
+/* ─── Adet seçici ─── */
+.pos-stepper {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.pos-stepper button {
+  width: var(--pos-touch); height: var(--pos-touch);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--pos-teal);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.pos-stepper button:disabled { color: var(--text-muted); cursor: default; }
+.pos-stepper span { min-width: 22px; text-align: center; font: 800 1rem 'Inter', sans-serif; color: #f8f6f2; }
+
+/* ─── Durum ve kaynak rozetleri (mutfak ekranı ile ortak) ─── */
+.pos-status, .pos-source {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.pos-status-new { color: #f5d07a; background: rgba(196, 150, 70, 0.18); border-color: rgba(245, 208, 122, 0.35); }
+.pos-status-preparing { color: #ffb38a; background: rgba(186, 111, 75, 0.2); border-color: rgba(255, 179, 138, 0.35); }
+.pos-status-ready { color: var(--pos-teal); background: var(--pos-teal-soft); border-color: var(--pos-teal-line); }
+.pos-status-served { color: #beb4a8; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.12); }
+.pos-status-cancelled { color: #f87171; background: rgba(239, 68, 68, 0.14); border-color: rgba(239, 68, 68, 0.3); }
+.pos-source-qr { color: #e8dac2; background: rgba(132, 67, 41, 0.35); border-color: rgba(186, 111, 75, 0.45); }
+.pos-source-waiter { color: var(--pos-teal); background: rgba(17, 87, 84, 0.25); border-color: var(--pos-teal-line); }
+
+/* ─── Uyarılar ─── */
+.pos-alert {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.pos-alert p { display: flex; gap: 8px; align-items: flex-start; }
+.pos-alert svg { flex-shrink: 0; margin-top: 2px; }
+.pos-alert > button:not(.pos-btn) { color: inherit; background: none; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.pos-alert-warn { color: #fde7b0; background: rgba(196, 150, 70, 0.16); border-color: rgba(245, 208, 122, 0.4); }
+
+.pos-form-error { color: #f87171; font-size: 0.84rem; }
+.pos-input-icon { position: relative; }
+.pos-input-icon svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.pos-input-icon .input { padding-left: 42px; min-height: var(--pos-touch); }
+
+.pos-login-demo { display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); }
+.pos-login-demo strong { color: var(--text-primary); }
+.pos-login-demo-tag {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em;
+  color: #f5d07a;
+  background: rgba(196, 150, 70, 0.18);
+  border: 1px solid rgba(245, 208, 122, 0.35);
+}
+.pos-login-demo-muted { font-size: 0.8rem; color: var(--text-muted); }
+
+.pos-screen { min-height: 100dvh; padding: 24px; text-align: center; }
+
+@keyframes pos-spin { to { transform: rotate(360deg); } }
+.pos-spin { animation: pos-spin 0.9s linear infinite; }

@@ -5,6 +5,8 @@ import { isAdmin } from './utils/adminAccess'
 import MenuPage from './pages/MenuPage'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
+const WaiterApp = lazy(() => import('./pos/waiter/WaiterApp'))
+const KitchenApp = lazy(() => import('./pos/kitchen/KitchenApp'))
 
 function ProtectedRoute({ children }) {
   const [session, setSession] = useState(undefined)
@@ -35,6 +37,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/garson/*" element={<WaiterApp />} />
+      <Route path="/mutfak" element={<KitchenApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>

@@ -9,7 +9,8 @@
     "build:local": "vite build --base=/",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node --test scripts/*.test.mjs tests/pos/*.test.mjs"
+    "test": "node --test scripts/*.test.mjs tests/pos/*.test.mjs",
+    "test:e2e": "node tests/e2e/demo-flow.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

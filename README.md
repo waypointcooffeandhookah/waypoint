@@ -1,3 +1,13 @@
+# Waypoint Restaurant OS: yerel demo
+
+POS tabloları Supabase'de yokken garson (`/waypoint/garson`) ve mutfak (`/waypoint/mutfak`) ekranları **demo modunda** açılır.
+
+- Demo verisi yalnızca o tarayıcının `localStorage` alanında tutulur. Siparişler gerçek mutfağa gitmez, Supabase'e yazılmaz.
+- Eşitleme yalnızca **aynı tarayıcının sekmeleri** arasında çalışır. Başka bir cihaz, başka bir tarayıcı veya gizli pencere bu verileri görmez; bu, gerçek çok cihazlı eşitlemenin karşılığı değildir.
+- Gerçek akış, migration test edilip onaylandıktan sonra açılır: kalıcı veritabanı kayıtları esastır, Realtime yalnızca yeniden okuma sinyali verir, yeniden bağlanınca kaçırılanlar okunur.
+
+Testler: `npm test` (birim ve PGlite), `npm run dev` açıkken `npm run test:e2e` (Chrome veya Edge ile iki sekmeli uçtan uca akış).
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
