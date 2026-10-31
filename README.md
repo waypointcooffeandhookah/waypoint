@@ -1,12 +1,25 @@
 # Waypoint Restaurant OS: yerel demo
 
-POS tabloları Supabase'de yokken garson (`/waypoint/garson`) ve mutfak (`/waypoint/mutfak`) ekranları **demo modunda** açılır.
+POS tabloları Supabase'de yokken müşteri (`/waypoint/masa/demo-5`), garson (`/waypoint/garson`) ve mutfak (`/waypoint/mutfak`) ekranları **demo modunda** açılır. Normal menü (`/waypoint/`) sipariş arayüzü göstermez.
+
+Gerçek masa QR kodu `/waypoint/masa/<64 haneli gizli kod>` biçimindedir; kod `table_qr_tokens` tablosundan gelir.
 
 - Demo verisi yalnızca o tarayıcının `localStorage` alanında tutulur. Siparişler gerçek mutfağa gitmez, Supabase'e yazılmaz.
 - Eşitleme yalnızca **aynı tarayıcının sekmeleri** arasında çalışır. Başka bir cihaz, başka bir tarayıcı veya gizli pencere bu verileri görmez; bu, gerçek çok cihazlı eşitlemenin karşılığı değildir.
 - Gerçek akış, migration test edilip onaylandıktan sonra açılır: kalıcı veritabanı kayıtları esastır, Realtime yalnızca yeniden okuma sinyali verir, yeniden bağlanınca kaçırılanlar okunur.
 
 Testler: `npm test` (birim ve PGlite), `npm run dev` açıkken `npm run test:e2e` (Chrome veya Edge ile iki sekmeli uçtan uca akış).
+
+## Staging (gerçek veritabanı, üretimden ayrı)
+
+Staging modu yalnızca `waypoint-pos-staging` projesine bağlanır. Ayar eksik veya hatalıysa uygulama açılmaz, üretime düşmez ve demo moduna geçmez.
+
+1. `.env.staging.example` dosyasını `.env.staging.local` olarak kopyalayıp anon anahtarı girin.
+2. Personel hesapları: `npm run staging:staff` (service_role anahtarı gizli olarak sorulur; şifreler git dışı `.staging-credentials.local` dosyasına yazılır).
+3. Başlatma: `npm run dev:staging` → `http://<bilgisayar-ip>:5173/waypoint/`
+4. Testler: `npm run test:staging` (API) ve `E2E_BASE=http://<bilgisayar-ip>:5173/waypoint npm run test:e2e:staging` (tarayıcı). QR kodları git dışı `.staging-qr.local` dosyasındadır.
+
+`supabase/staging/` yalnızca staging içindir, üretimde çalıştırılmaz. Test siparişlerini silmeden kapatmak için `03_close_test_orders.sql` kullanılır.
 
 # React + Vite
 

@@ -10,6 +10,7 @@ import PosGate from '../ui/PosGate'
 import PosHeader from '../ui/PosHeader'
 import TableGrid from './TableGrid'
 import TableView from './TableView'
+import QrOrderNotifier from './QrOrderNotifier'
 import '../ui/pos.css'
 import './waiter.css'
 
@@ -52,6 +53,7 @@ export default function WaiterApp() {
         <PosHeader subtitle="Garson Paneli" staff={staff} demo={mode === 'demo'} onSignOut={session.signOut}
           demoLink={{ path: 'mutfak', label: 'Mutfak ekranını aç' }}
           onResetDemo={() => { if (window.confirm('Demo siparişleri silinip başlangıca dönülsün mü?')) backend.resetDemo() }} />
+        {backend && <QrOrderNotifier backend={backend} />}
         {backend && (
           <Routes>
             <Route index element={<TableGrid backend={backend} carts={carts} />} />

@@ -1,4 +1,6 @@
 // Garson/müşteri sepeti. Fiyat yalnızca tahmini gösterim içindir; sunucu yeniden hesaplar.
+import { randomUUID } from '../utils/uuid.js'
+
 export const MAX_QUANTITY = 20
 export const MAX_LINES = 30
 
@@ -15,7 +17,7 @@ export function cartReducer(state, action) {
         return { ...state, lines: state.lines.map(line => line === plain ? { ...line, quantity: clampQuantity(line.quantity + 1) } : line) }
       }
       if (state.lines.length >= MAX_LINES) return state
-      const line = { lineId: action.lineId ?? crypto.randomUUID(), menuItemId: item.id, name: item.name, price: item.price, image: item.image ?? null, quantity: 1, note: '' }
+      const line = { lineId: action.lineId ?? randomUUID(), menuItemId: item.id, name: item.name, price: item.price, image: item.image ?? null, quantity: 1, note: '' }
       return { ...state, lines: [...state.lines, line] }
     }
     case 'setQuantity': {
@@ -31,6 +33,14 @@ export function cartReducer(state, action) {
       return { ...state, lines: state.lines.map(line => line.lineId === action.lineId ? { ...line, note: action.note.slice(0, 200) } : line) }
     case 'setNote':
       return { ...state, note: action.note.slice(0, 300) }
+    // Güncel katalogla eşitle: tükenen ürün çıkar, gösterilen fiyat yenilenir.
+    case 'syncCatalog': {
+      const byId = new Map(action.items.map(item => [item.id, item]))
+      const lines = state.lines
+        .filter(line => byId.get(line.menuItemId)?.available)
+        .map(line => ({ ...line, price: byId.get(line.menuItemId).price }))
+      return { ...state, lines }
+    }
     case 'clear':
       return emptyCart
     default:

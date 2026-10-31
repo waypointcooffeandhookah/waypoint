@@ -76,9 +76,14 @@ begin
 end;
 $$;
 
-drop trigger if exists restaurant_tables_create_token on public.restaurant_tables;
-create trigger restaurant_tables_create_token after insert on public.restaurant_tables
-  for each row execute function pos_private.create_table_token();
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgname = 'restaurant_tables_create_token'
+                 and tgrelid = 'public.restaurant_tables'::regclass and not tgisinternal) then
+    create trigger restaurant_tables_create_token after insert on public.restaurant_tables
+      for each row execute function pos_private.create_table_token();
+  end if;
+end $$;
 
 -- ── Oturum, adisyon, sipariş ───────────────────────────────────
 create table if not exists public.table_sessions (
@@ -614,47 +619,43 @@ alter table public.order_status_history enable row level security;
 alter table public.payments enable row level security;
 alter table public.audit_log enable row level security;
 
+-- Yalnızca eksik politikalar eklenir; hiçbir politika silinmez. Tekrar çalıştırma elle eklenen
+-- politikalara dokunmaz. Var olan bir politikayı değiştirmek için yeni bir migration yazılır.
 do $$
 declare
-  p record;
+  p text[];
 begin
-  for p in select tablename, policyname from pg_policies where schemaname = 'public' and tablename in
-    ('staff_profiles', 'restaurant_tables', 'table_qr_tokens', 'table_sessions', 'bills', 'orders',
-     'order_items', 'order_status_history', 'payments', 'audit_log')
-  loop
-    execute format('drop policy %I on public.%I', p.policyname, p.tablename);
+  foreach p slice 1 in array array[
+    ['staff_profiles', 'Staff read own profile or managers read all',
+     $q$for select to authenticated using (user_id = (select auth.uid()) or (select public.pos_has_role(array['manager', 'admin'])))$q$],
+    ['restaurant_tables', 'Staff read tables',
+     $q$for select to authenticated using ((select public.pos_current_role()) is not null)$q$],
+    ['restaurant_tables', 'Managers insert tables',
+     $q$for insert to authenticated with check ((select public.pos_has_role(array['manager', 'admin'])))$q$],
+    ['restaurant_tables', 'Managers update tables',
+     $q$for update to authenticated using ((select public.pos_has_role(array['manager', 'admin']))) with check ((select public.pos_has_role(array['manager', 'admin'])))$q$],
+    ['table_qr_tokens', 'Managers read QR tokens',
+     $q$for select to authenticated using ((select public.pos_has_role(array['manager', 'admin'])))$q$],
+    ['table_sessions', 'Staff read sessions',
+     $q$for select to authenticated using ((select public.pos_current_role()) is not null)$q$],
+    ['orders', 'Staff read orders',
+     $q$for select to authenticated using ((select public.pos_current_role()) is not null)$q$],
+    ['order_items', 'Staff read order items',
+     $q$for select to authenticated using ((select public.pos_current_role()) is not null)$q$],
+    ['order_status_history', 'Staff read order history',
+     $q$for select to authenticated using ((select public.pos_current_role()) is not null)$q$],
+    ['bills', 'Billing staff read bills',
+     $q$for select to authenticated using ((select public.pos_has_role(array['waiter', 'cashier', 'manager', 'admin'])))$q$],
+    ['payments', 'Billing staff read payments',
+     $q$for select to authenticated using ((select public.pos_has_role(array['waiter', 'cashier', 'manager', 'admin'])))$q$],
+    ['audit_log', 'Managers read audit log',
+     $q$for select to authenticated using ((select public.pos_has_role(array['manager', 'admin'])))$q$]
+  ] loop
+    if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = p[1] and policyname = p[2]) then
+      execute format('create policy %I on public.%I %s', p[2], p[1], p[3]);
+    end if;
   end loop;
 end $$;
-
-create policy "Staff read own profile or managers read all" on public.staff_profiles for select to authenticated
-  using (user_id = (select auth.uid()) or (select public.pos_has_role(array['manager', 'admin'])));
-
-create policy "Staff read tables" on public.restaurant_tables for select to authenticated
-  using ((select public.pos_current_role()) is not null);
-create policy "Managers insert tables" on public.restaurant_tables for insert to authenticated
-  with check ((select public.pos_has_role(array['manager', 'admin'])));
-create policy "Managers update tables" on public.restaurant_tables for update to authenticated
-  using ((select public.pos_has_role(array['manager', 'admin'])))
-  with check ((select public.pos_has_role(array['manager', 'admin'])));
-
-create policy "Managers read QR tokens" on public.table_qr_tokens for select to authenticated
-  using ((select public.pos_has_role(array['manager', 'admin'])));
-
-create policy "Staff read sessions" on public.table_sessions for select to authenticated
-  using ((select public.pos_current_role()) is not null);
-create policy "Staff read orders" on public.orders for select to authenticated
-  using ((select public.pos_current_role()) is not null);
-create policy "Staff read order items" on public.order_items for select to authenticated
-  using ((select public.pos_current_role()) is not null);
-create policy "Staff read order history" on public.order_status_history for select to authenticated
-  using ((select public.pos_current_role()) is not null);
-
-create policy "Billing staff read bills" on public.bills for select to authenticated
-  using ((select public.pos_has_role(array['waiter', 'cashier', 'manager', 'admin'])));
-create policy "Billing staff read payments" on public.payments for select to authenticated
-  using ((select public.pos_has_role(array['waiter', 'cashier', 'manager', 'admin'])));
-create policy "Managers read audit log" on public.audit_log for select to authenticated
-  using ((select public.pos_has_role(array['manager', 'admin'])));
 
 -- Fonksiyonlar varsayılan olarak PUBLIC'e, Supabase'de ayrıca anon/authenticated'a
 -- açıktır; hepsi geri alınır, yalnızca gerekenler açılır.

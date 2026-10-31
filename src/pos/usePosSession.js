@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { IS_STAGING } from '../config'
 import { getItemImage } from '../utils/imageUtils'
 import { loadCatalog } from './catalog'
 import { createDemoBackend } from './backend/demoBackend'
@@ -29,7 +30,7 @@ export function usePosSession({ demoStaff }) {
 
   useEffect(() => {
     let active = true
-    detectPosMode(supabase, search).then(next => {
+    detectPosMode(supabase, search, !IS_STAGING).then(next => {
       if (!active) return
       if (next === 'demo' && new URLSearchParams(search).has('demo')) writeDemoSession(true)
       if (next === 'demo') setStaff(readDemoSession() ? demoStaff : null)

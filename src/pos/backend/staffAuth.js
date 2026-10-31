@@ -5,12 +5,13 @@ export const KITCHEN_ROLES = ['kitchen', 'manager', 'admin']
 
 // POS şeması yoksa (migration uygulanmamış) DEMO moduna geçilir.
 // Anonim kullanıcı için tablo varsa "yetki yok", yoksa "tablo bulunamadı" döner.
-export async function detectPosMode(supabase, search = '') {
-  if (new URLSearchParams(search).has('demo')) return 'demo'
+// Staging'de demoya düşülmez (allowDemo=false): gerçek test sanılan bir akış tarayıcıda kalmamalı.
+export async function detectPosMode(supabase, search = '', allowDemo = true) {
+  if (allowDemo && new URLSearchParams(search).has('demo')) return 'demo'
   // HEAD isteği tablo yokken de hatasız 204 döndürür; bu yüzden GET kullanılır.
   const { error } = await supabase.from('restaurant_tables').select('id').limit(1)
   if (!error) return 'live'
-  if (error.code === 'PGRST205' || error.code === '42P01') return 'demo'
+  if (error.code === 'PGRST205' || error.code === '42P01') return allowDemo ? 'demo' : 'unreachable'
   if (error.code === '42501') return 'live'
   return 'unreachable'
 }

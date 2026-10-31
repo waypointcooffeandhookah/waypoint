@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { startOrderSync } from './orderSync.js'
 
 export function useOrderSync(backend, load, pollMs) {
@@ -10,5 +10,6 @@ export function useOrderSync(backend, load, pollMs) {
     return () => sync.current.stop()
   }, [backend, load, pollMs])
 
-  return { connection, refresh: () => sync.current?.refresh() }
+  const refresh = useCallback(() => sync.current?.refresh(), [])
+  return { connection, refresh }
 }

@@ -4,9 +4,13 @@
 import { createDemoStore } from './demoStore.js'
 import { NEXT_STATUS } from '../orderStatus.js'
 import { SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
+import { demoTableIdOf } from '../customer/qrOrders.js'
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 const TABLES = Array.from({ length: 12 }, (_, i) => ({ id: `demo-masa-${i + 1}`, label: `Masa ${i + 1}` }))
+// Migration'daki QR hız sınırıyla aynı: masa başına 5 dakikada 12 sipariş.
+const QR_RATE_LIMIT = 12
+const QR_RATE_WINDOW_MS = 5 * 60000
 
 export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = () => Date.now(), store = createDemoStore() } = {}) {
   const byId = new Map(catalogItems.map(item => [item.id, item]))
@@ -17,7 +21,7 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
       return { name: item.name, quantity: line.quantity, lineTotalCents: item.priceCents * line.quantity, note: line.note || null }
     })
     const order = {
-      id: `demo-siparis-${++state.orderNumber}`, orderNumber: state.orderNumber, idempotencyKey: key, source, status: 'new', createdAt, updatedAt: createdAt,
+      id: `demo-siparis-${++state.orderNumber}`, orderNumber: state.orderNumber, idempotencyKey: key, key, source, status: 'new', createdAt, updatedAt: createdAt,
       note: note || null, items, subtotalCents: items.reduce((sum, item) => sum + item.lineTotalCents, 0), demo: true,
     }
     state.bills[tableId] ??= { billId: `demo-adisyon-${tableId}`, openedAt: createdAt, orders: [], paidCents: 0 }
@@ -52,6 +56,36 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
     return { totalCents, orderCount: active.length, paidCents: bill.paidCents, balanceCents: totalCents - bill.paidCents }
   }
 
+  // Garson ve müşteri aynı sipariş yolundan geçer. Fiyat yalnızca katalogdan gelir.
+  async function place(source, tableId, key, payload) {
+    await wait(latencyMs)
+    try {
+      // Anahtar kontrolü yazmayla aynı adımdadır: iki sekme aynı siparişi iki kez oluşturamaz.
+      return await transact(state => {
+        const previous = allOrders(state).find(({ order }) => order.idempotencyKey === key)
+        if (previous) {
+          if (previous.tableId !== tableId) return { state: 'rejected', code: 'idempotency_key_conflict' }
+          return { state: 'confirmed', order: { ...previous.order, duplicate: true } }
+        }
+        if (!TABLES.some(table => table.id === tableId)) return { state: 'rejected', code: source === 'qr' ? 'invalid_table' : 'table_not_found' }
+        if (!payload.lines.length) return { state: 'rejected', code: 'empty_order' }
+        if (payload.lines.length > 30) return { state: 'rejected', code: 'too_many_lines' }
+        if (payload.note?.length > 300 || payload.lines.some(line => line.note?.length > 200)) return { state: 'rejected', code: 'note_too_long' }
+        for (const line of payload.lines) {
+          if (!byId.get(line.menuItemId)?.available) return { state: 'rejected', code: 'item_unavailable' }
+          if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 20) return { state: 'rejected', code: 'invalid_quantity' }
+        }
+        if (source === 'qr') {
+          const recent = state.bills[tableId]?.orders.filter(order => order.source === 'qr' && now() - order.createdAt < QR_RATE_WINDOW_MS).length ?? 0
+          if (recent >= QR_RATE_LIMIT) return { state: 'rejected', code: 'rate_limited' }
+        }
+        return { state: 'confirmed', order: createOrder(state, tableId, source, payload.lines, payload.note, key) }
+      })
+    } catch (error) {
+      return { state: 'uncertain', error } // Depolama yazılamadı.
+    }
+  }
+
   return {
     mode: 'demo',
 
@@ -84,28 +118,37 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
         .sort((a, b) => a.createdAt - b.createdAt)
     },
 
-    async submit({ key, payload }) {
-      await wait(latencyMs)
-      try {
-        // Anahtar kontrolü yazmayla aynı adımdadır: iki sekme aynı siparişi iki kez oluşturamaz.
-        return await transact(state => {
-          const previous = allOrders(state).find(({ order }) => order.idempotencyKey === key)
-          if (previous) return { state: 'confirmed', order: { ...previous.order, duplicate: true } }
-          if (!TABLES.some(table => table.id === payload.tableId)) return { state: 'rejected', code: 'table_not_found' }
-          if (!payload.lines.length) return { state: 'rejected', code: 'empty_order' }
-          for (const line of payload.lines) {
-            if (!byId.get(line.menuItemId)?.available) return { state: 'rejected', code: 'item_unavailable' }
-            if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 20) return { state: 'rejected', code: 'invalid_quantity' }
-          }
-          return { state: 'confirmed', order: createOrder(state, payload.tableId, 'waiter', payload.lines, payload.note, key) }
-        })
-      } catch (error) {
-        return { state: 'uncertain', error } // Depolama yazılamadı.
-      }
-    },
+    submit: ({ key, payload }) => place('waiter', payload.tableId, key, payload),
 
     async reconcile(submission) {
       return this.submit(submission)
+    },
+
+    // Müşteri tarafı: gerçekteki get_qr_table / place_qr_order / get_qr_orders karşılığı.
+    qr(token) {
+      const tableId = demoTableIdOf(token)
+      const submit = ({ key, payload }) => place('qr', tableId, key, payload)
+      return {
+        mode: 'demo',
+        async getTable() {
+          const table = TABLES.find(t => t.id === tableId)
+          return table ? { state: 'ready', label: table.label } : { state: 'invalid' }
+        },
+        submit,
+        reconcile: submit,
+        async listOrders(keys) {
+          await wait(latencyMs / 3)
+          const wanted = new Set(keys)
+          return allOrders(await load())
+            .filter(({ tableId: id, order }) => id === tableId && wanted.has(order.idempotencyKey))
+            .map(({ order }) => ({ ...order, key: order.idempotencyKey }))
+            .sort((a, b) => a.createdAt - b.createdAt)
+        },
+        subscribe: (onChange, onConnection) => {
+          onConnection('connected')
+          return store.subscribe(onChange)
+        },
+      }
     },
 
     async setOrderStatus(orderId, status) {

@@ -1,0 +1,200 @@
+/* ========================================
+   WAYPOINT QR MENÜ — MÜŞTERİ SİPARİŞ KATMANI
+   Mevcut menünün kart ve alt sayfa diline eklenir; yalnızca /masa/ adresinde yüklenir.
+   ======================================== */
+
+.menu-root-wrap.qr-ordering { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+
+.qr-table-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem; font-weight: 800;
+  color: var(--pos-teal);
+  background: var(--pos-teal-soft);
+  border: 1px solid var(--pos-teal-line);
+  white-space: nowrap;
+}
+.hero-shell .qr-table-chip { margin-bottom: 14px; font-size: 0.86rem; }
+
+.qr-banner {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 10px 16px 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem; line-height: 1.45;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.qr-banner-demo { color: #fde7b0; background: linear-gradient(90deg, rgba(196, 150, 70, 0.26), rgba(132, 67, 41, 0.26)); border-color: rgba(245, 208, 122, 0.3); }
+.qr-banner-demo svg { flex-shrink: 0; margin-top: 1px; }
+.qr-banner-demo strong { letter-spacing: 0.08em; color: #f5d07a; }
+
+/* ─── Ürün üzerindeki ekleme ─── */
+.qr-add {
+  width: var(--pos-touch); height: var(--pos-touch);
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(78, 205, 196, 0.55);
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 100%);
+  box-shadow: 0 4px 14px rgba(26, 123, 118, 0.35);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.qr-add:active:not(:disabled) { transform: scale(0.94); }
+.qr-add:disabled { opacity: 0.55; }
+.qr-stepper { background: rgba(17, 87, 84, 0.3); border-color: var(--pos-teal-line); }
+.qr-stepper.wide { width: 100%; justify-content: space-between; }
+.qr-add-wide { width: 100%; min-height: 52px; font-size: 1rem; }
+.qr-modal-order { margin-top: 18px; }
+
+/* ─── Alt çubuk ─── */
+.qr-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  gap: 8px;
+  width: min(480px, calc(100% - 24px));
+  transform: translateX(-50%);
+  justify-content: flex-end;
+}
+.qr-bar-orders {
+  width: 56px; height: 56px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--pos-teal);
+  background: rgba(24, 20, 18, 0.96);
+  border: 1px solid var(--pos-teal-line);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.qr-bar-cart {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 18px 0 10px;
+  border: none;
+  border-radius: var(--radius-full);
+  font: 700 0.95rem 'Inter', sans-serif;
+  color: #fff;
+  background: linear-gradient(135deg, #115754 0%, #1a7b76 60%, #22928b 100%);
+  box-shadow: 0 12px 30px rgba(26, 123, 118, 0.45);
+  cursor: pointer;
+}
+.qr-bar-cart strong { margin-left: auto; font: 800 1rem 'Outfit', sans-serif; white-space: nowrap; }
+.qr-bar-count {
+  min-width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font: 800 0.95rem 'Outfit', sans-serif;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+/* ─── Sepet alt sayfası ─── */
+.qr-sheet { display: flex; flex-direction: column; overflow: hidden; }
+.qr-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 18px 12px; }
+.qr-sheet-head > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.qr-sheet-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 800; color: #f8f6f2; }
+.qr-demo-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.64rem; font-weight: 800; letter-spacing: 0.1em;
+  color: #f5d07a;
+  background: rgba(196, 150, 70, 0.18);
+  border: 1px solid rgba(245, 208, 122, 0.35);
+}
+.qr-tabs { margin: 0 18px 12px; flex-shrink: 0; }
+.qr-sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 18px 16px; overscroll-behavior: contain; }
+.qr-sheet-footer {
+  flex-shrink: 0;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(21, 17, 15, 0.96);
+}
+.qr-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-secondary); }
+.qr-total strong { font: 800 1.35rem 'Outfit', sans-serif; color: #f8f6f2; }
+.qr-send { width: 100%; min-height: 56px; font-size: 1.06rem; }
+
+.qr-lines { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.qr-line {
+  display: flex; gap: 12px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.qr-line-img { width: 56px; height: 56px; flex-shrink: 0; border-radius: 14px; object-fit: cover; }
+.qr-line-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.qr-line-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.qr-line-info { flex: 1 1 100px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.qr-line-name { font-size: 0.96rem; font-weight: 700; line-height: 1.25; color: #f8f6f2; overflow-wrap: anywhere; }
+.qr-line-price { font: 800 0.92rem 'Outfit', sans-serif; color: var(--pos-teal); }
+.qr-note-toggle {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8rem; font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+/* 16px: iOS odaklanınca sayfayı yakınlaştırmaz */
+.qr-note-input, .qr-order-note { width: 100%; font-size: 1rem; }
+.qr-order-note { min-height: 64px; margin-top: 6px; }
+.qr-uncertain, .qr-rejected { margin-top: 14px; }
+
+.qr-empty { padding: 36px 24px 44px; text-align: center; color: var(--text-muted); }
+.qr-empty h3 { margin: 12px 0 4px; font-size: 1.05rem; color: var(--text-primary); }
+.qr-empty p { font-size: 0.86rem; }
+
+/* ─── Onay ─── */
+.qr-confirm { padding: 12px 22px calc(26px + env(safe-area-inset-bottom)); text-align: center; color: var(--pos-teal); overflow-y: auto; }
+.qr-confirm h3 { margin-top: 10px; font-family: 'Playfair Display', serif; font-size: 1.45rem; font-weight: 800; color: #f8f6f2; }
+.qr-confirm-number { margin-top: 6px; font: 800 1rem 'Outfit', sans-serif; color: var(--text-secondary); }
+.qr-confirm-total { margin-top: 4px; font: 800 1.7rem 'Outfit', sans-serif; color: var(--pos-teal); }
+.qr-confirm-text { margin: 8px auto 18px; max-width: 340px; font-size: 0.86rem; line-height: 1.5; color: var(--text-secondary); }
+.qr-confirm-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+
+/* ─── Siparişlerim ─── */
+.qr-orders { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.qr-order { padding: 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.qr-order-ready { border-color: var(--pos-teal-line); }
+.qr-order-cancelled { opacity: 0.6; }
+.qr-order-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.qr-order-number { font: 800 1rem 'Outfit', sans-serif; color: #f8f6f2; }
+.qr-order-time { font-size: 0.76rem; color: var(--text-muted); }
+.qr-order-head .pos-status { margin-left: auto; }
+
+.qr-steps { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 0; }
+.qr-steps li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 0.64rem; font-weight: 600; text-align: center; color: var(--text-muted); }
+.qr-steps li:not(:first-child)::before { content: ''; position: absolute; top: 10px; right: 50%; width: 100%; height: 2px; background: rgba(255, 255, 255, 0.12); }
+.qr-steps li.done:not(:first-child)::before, .qr-steps li.current:not(:first-child)::before { background: var(--pos-teal); }
+.qr-step-dot {
+  position: relative; z-index: 1;
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: #2a2320;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+}
+.qr-steps li.done .qr-step-dot, .qr-steps li.current .qr-step-dot { color: #0c0b0a; background: var(--pos-teal); border-color: var(--pos-teal); }
+.qr-steps li.current { color: var(--pos-teal); font-weight: 800; }
+
+.qr-order-items { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.qr-order-items li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; font-size: 0.88rem; color: var(--text-primary); }
+.qr-order-qty { font-weight: 800; color: var(--pos-teal); }
+.qr-order-name em { display: block; font-size: 0.76rem; color: var(--text-secondary); }
+.qr-order-amount { font-weight: 700; color: var(--text-secondary); }
+.qr-orders-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 14px; padding: 0 4px; font-size: 0.82rem; color: var(--text-secondary); }
+.qr-orders-total strong { font: 800 1.2rem 'Outfit', sans-serif; color: #f8f6f2; }

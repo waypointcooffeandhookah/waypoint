@@ -3,6 +3,7 @@ import { submitOrder, reconcileOrder } from '../orderSubmission.js'
 import { staffOrderTransport, updateOrderStatus } from '../posApi.js'
 import { statusResult } from '../orderStatus.js'
 import { mapKitchenOrder, SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
+import { randomUUID } from '../../utils/uuid.js'
 
 const mapOrder = order => ({
   id: order.id,
@@ -80,7 +81,7 @@ export function createLiveBackend(supabase) {
 
     // Realtime yalnızca "yeniden oku" sinyalidir; kaynak her zaman veritabanı kayıtlarıdır.
     subscribe(onChange, onConnection) {
-      const channel = supabase.channel(`pos-orders-${crypto.randomUUID()}`)
+      const channel = supabase.channel(`pos-orders-${randomUUID()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
         .subscribe(status => onConnection(status === 'SUBSCRIBED' ? 'connected' : 'disconnected'))
       return () => supabase.removeChannel(channel)

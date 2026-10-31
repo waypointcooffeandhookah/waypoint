@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging --host",
     "build": "vite build",
     "build:local": "vite build --base=/",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --test scripts/*.test.mjs tests/pos/*.test.mjs",
-    "test:e2e": "node tests/e2e/demo-flow.mjs"
+    "test:e2e": "node tests/e2e/demo-flow.mjs",
+    "test:staging": "node tests/integration/staging.mjs",
+    "test:e2e:staging": "node tests/e2e/staging-flow.mjs",
+    "staging:staff": "node scripts/staging-create-staff.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

@@ -204,7 +204,8 @@ function groupCatalog(allItems) {
   return result
 }
 
-export default function MenuPage() {
+// ordering ve yuvaları yalnızca /masa/ adresinden gelir; normal menüde hiçbiri kullanılmaz.
+export default function MenuPage({ ordering = null, tableChip = null, orderBanner = null, orderLayer = null }) {
   const [promotionId, setPromotionId] = useState(null)
   const [promotionDismissed, setPromotionDismissed] = useState(false)
   const closePromotion = useCallback(() => setPromotionDismissed(true), [])
@@ -410,10 +411,10 @@ export default function MenuPage() {
   )
 
   return (
-    <div className="menu-root-wrap">
+    <div className={`menu-root-wrap${ordering ? ' qr-ordering' : ''}`}>
       {/* ── 1. ULTRA LUXURY OPENING HERO SCREEN (Waypoint Dark Palette) ── */}
       {showHero && (
-        <OpeningHeroScreen onEnter={() => setShowHero(false)} />
+        <OpeningHeroScreen onEnter={() => setShowHero(false)} tableChip={tableChip} />
       )}
 
       {/* ── 2. MENU SHOWCASE & CONTENT ── */}
@@ -439,6 +440,7 @@ export default function MenuPage() {
                 <span className="menu-logo-sub">COFFEE & HOOKAH</span>
               </div>
             </div>
+            {tableChip}
           </div>
 
           <div className="menu-search-wrap">
@@ -464,6 +466,7 @@ export default function MenuPage() {
           </div>
         </header>
 
+        {orderBanner}
         {cacheNotice && <div className="cache-notice" role="status">{cacheNotice} <button type="button" onClick={() => setRefreshKey(key => key + 1)}>Yenile</button></div>}
         {/* ── Categories Bar (Story Bubbles) ── */}
         <div
@@ -523,6 +526,7 @@ export default function MenuPage() {
                 item={item}
                 delay={Math.min(i, 12) * 15}
                 onSelect={setSelectedProduct}
+                ordering={ordering}
               />
             ))
           )}
@@ -548,14 +552,16 @@ export default function MenuPage() {
         <ProductVitrinModal
           product={selectedProduct}
           onClose={closeProduct}
+          ordering={ordering}
         />
       )}
+      {!showHero && !selectedProduct && orderLayer}
     </div>
   )
 }
 
 // ── 1. ULTRA LUXURY OPENING HERO SCREEN (Waypoint Dark Palette) ──
-function OpeningHeroScreen({ onEnter }) {
+function OpeningHeroScreen({ onEnter, tableChip }) {
   const [socialLinks, setSocialLinks] = useState({ instagram: INSTAGRAM_URL, whatsapp: WHATSAPP_URL })
   useEffect(() => {
     let active = true
@@ -623,6 +629,7 @@ function OpeningHeroScreen({ onEnter }) {
 
         {/* Subtitle */}
         <p className="hero-brand-subtitle">QR MENÜ</p>
+        {tableChip}
 
         {/* Lounge Details */}
         <div className="hero-brand-desc">
@@ -667,7 +674,7 @@ function OpeningHeroScreen({ onEnter }) {
 }
 
 // ── 2. EDITORIAL PRODUCT CARD (Dark Luxury Vitrin Tasarımı) ──
-const EditorialProductCard = memo(function EditorialProductCard({ item, delay, onSelect }) {
+const EditorialProductCard = memo(function EditorialProductCard({ item, delay, onSelect, ordering }) {
   const isAvail = item.is_available !== false
   const imgUrl = getItemImage(item)
   const hasImage = Boolean(imgUrl)
@@ -752,9 +759,11 @@ const EditorialProductCard = memo(function EditorialProductCard({ item, delay, o
             <span className="editorial-card-price">
               {isAvail ? (priceText || 'Fiyat sorunuz') : 'Tükendi'}
             </span>
-            <span className="editorial-card-action-circle" aria-hidden="true">
-              <ArrowUpRight size={16} strokeWidth={2.4} />
-            </span>
+            {ordering?.orderable(item) ? <ordering.OrderControl ordering={ordering} item={item} /> : (
+              <span className="editorial-card-action-circle" aria-hidden="true">
+                <ArrowUpRight size={16} strokeWidth={2.4} />
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -763,7 +772,7 @@ const EditorialProductCard = memo(function EditorialProductCard({ item, delay, o
 })
 
 // ── 3. PRODUCT SHOWCASE / VITRIN BOTTOM SHEET MODAL (Dark Luxury) ──
-function ProductVitrinModal({ product, onClose }) {
+function ProductVitrinModal({ product, onClose, ordering }) {
   const dialogRef = useDialog(onClose)
 
   const imgUrl = getItemImage(product)
@@ -868,6 +877,7 @@ function ProductVitrinModal({ product, onClose }) {
                           <span className="modal-variant-price">{formatPrice(p)}</span>
                         </div>
                       )}
+                      {ordering && <ordering.OrderControl ordering={ordering} item={v} />}
                     </div>
                   )
                 })}
@@ -875,10 +885,14 @@ function ProductVitrinModal({ product, onClose }) {
             </div>
           )}
 
-          {/* Footer Note */}
-          <div className="modal-sheet-footer-note">
-            <span>Siparişinizi servis personelimize iletebilirsiniz.</span>
-          </div>
+          {!isGroup && ordering?.orderable(product) ? (
+            <div className="qr-modal-order"><ordering.OrderControl ordering={ordering} item={product} wide /></div>
+          ) : ordering?.status === 'ready' && isGroup ? null : (
+            /* Footer Note */
+            <div className="modal-sheet-footer-note">
+              <span>Siparişinizi servis personelimize iletebilirsiniz.</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

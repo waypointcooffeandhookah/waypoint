@@ -7,6 +7,8 @@ const ORDER_ERRORS = {
   empty_order: 'Sepet boş.',
   note_too_long: 'Not çok uzun.',
   table_not_found: 'Masa bulunamadı veya kullanım dışı.',
+  invalid_table: 'Masa kodu geçersiz. Lütfen masadaki QR kodu yeniden okutun.',
+  invalid_price: 'Sepetteki bir ürünün fiyatı doğrulanamadı. Personelimize danışın.',
   bill_closed: 'Bu masanın adisyonu kapatılmış.',
   forbidden: 'Bu işlem için yetkiniz yok. Yeniden giriş yapın.',
   rate_limited: 'Çok sık sipariş gönderildi, biraz sonra tekrar deneyin.',

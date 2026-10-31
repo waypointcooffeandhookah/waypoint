@@ -7,6 +7,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const WaiterApp = lazy(() => import('./pos/waiter/WaiterApp'))
 const KitchenApp = lazy(() => import('./pos/kitchen/KitchenApp'))
+const QrOrderRoute = lazy(() => import('./pos/customer/QrOrderRoute'))
 
 function ProtectedRoute({ children }) {
   const [session, setSession] = useState(undefined)
@@ -39,6 +40,7 @@ export default function App() {
       />
       <Route path="/garson/*" element={<WaiterApp />} />
       <Route path="/mutfak" element={<KitchenApp />} />
+      <Route path="/masa/:tableToken" element={<QrOrderRoute />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>

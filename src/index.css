@@ -206,6 +206,20 @@ textarea.input { resize: vertical; min-height: 80px; }
   font-size: 0.875rem;
 }
 
+.staging-badge {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 9999;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #b45309;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 /* ─── Divider ─── */
 .divider {
   height: 1px;

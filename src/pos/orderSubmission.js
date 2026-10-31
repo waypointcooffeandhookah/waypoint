@@ -1,10 +1,12 @@
 // Güvenilir sipariş gönderimi: her gönderimin sabit bir idempotency anahtarı vardır.
 // Sunucu onaylamadan "başarılı" denmez; yanıt alınamazsa durum "belirsiz" olur ve
 // tekrar denemeden önce aynı anahtarla sunucudaki durum sorgulanır.
+import { randomUUID } from '../utils/uuid.js'
+
 export const SUBMIT_TIMEOUT_MS = 15000
 const PENDING_KEY = 'waypoint-pos-pending-v1'
 
-export function createSubmission(payload, newKey = () => crypto.randomUUID()) {
+export function createSubmission(payload, newKey = randomUUID) {
   return { key: newKey(), payload, createdAt: Date.now() }
 }
 
