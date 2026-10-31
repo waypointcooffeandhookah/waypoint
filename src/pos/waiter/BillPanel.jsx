@@ -25,7 +25,7 @@ export default function BillPanel({ bill, error, onServe }) {
 
       <ol className="wt-orders">
         {[...bill.orders].reverse().map(order => (
-          <li key={order.id} className={`wt-order${order.status === 'cancelled' ? ' cancelled' : ''}`}>
+          <li key={order.id} className={`wt-order${order.status === 'cancelled' ? ' cancelled' : ''}${order.status === 'ready' ? ' ready' : ''}`}>
             <div className="wt-order-head">
               <span className="wt-order-number">#{order.orderNumber}</span>
               <span className={`pos-source pos-source-${order.source}`}>

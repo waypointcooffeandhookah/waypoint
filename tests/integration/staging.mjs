@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { STAGING_REF } from '../../src/supabaseTarget.js'
+import { READY_NOTIFICATION_SELECT, mapNotificationRow } from '../../src/pos/waiter/notifications.js'
 
 const root = new URL('../../', import.meta.url)
 const env = Object.fromEntries(readFileSync(new URL('.env.staging.local', root), 'utf8').split(/\r?\n/).filter(Boolean).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]))
@@ -319,6 +320,20 @@ if (!creds) {
     const history = await waiter.from('order_status_history').select('to_status, changed_by').eq('order_id', id).order('id')
     expect(history.data.map(h => h.to_status).join('>') === 'new>preparing>ready', 'durum geçmişi')
     expect(history.data.slice(1).every(h => h.changed_by), 'değiştiren kişi kaydedilmedi')
+  })
+
+  await step('Bildirim kaydı: garson hazır siparişi masa ve ürünlerle okur, tek kayıt; anonim okuyamaz', async () => {
+    const id = scenario.fourth.order_id
+    const query = db => db.from('order_status_history').select(READY_NOTIFICATION_SELECT).eq('to_status', 'ready').eq('order_id', id)
+    const { data, error } = await query(waiter)
+    expect(!error, error?.message)
+    expect(data.length === 1, `${data.length} bildirim kaydı`)
+    const item = mapNotificationRow(data[0])
+    expect(item.tableLabel === 'Masa 5' && item.status === 'ready' && item.items[0].name === 'Türk Kahvesi' && item.items[0].quantity === 1, JSON.stringify(item))
+    denied(await query(anon), 'anonim bildirim okuma')
+    const again = await kitchen.rpc('update_order_status', { p_order_id: id, p_status: 'ready' })
+    expect(again.data?.duplicate === true, 'aynı durum yeniden işlendi')
+    expect((await query(waiter)).data.length === 1, 'tekrar çağrı bildirim çoğalttı')
   })
 
   let bill

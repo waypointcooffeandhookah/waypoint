@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Receipt, ShoppingBag, UtensilsCrossed } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createSubmission, savePending, clearPending } from '../orderSubmission'
@@ -110,6 +110,14 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
   }, [dispatch, submitState])
 
   const openPanel = name => { setPanel(name); setSheetOpen(true) }
+
+  // Bildirimden gelindiyse adisyon doğrudan açılır.
+  const location = useLocation()
+  useEffect(() => {
+    if (!location.state?.openBill) return
+    queueMicrotask(() => { setPanel('bill'); setSheetOpen(true) })
+  }, [location.key, location.state])
+
   const count = cartCount(cart)
   const locked = submitState === 'sending' || submitState === 'uncertain'
 

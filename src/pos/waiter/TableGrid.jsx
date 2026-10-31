@@ -61,7 +61,7 @@ export default function TableGrid({ backend, carts }) {
           const pending = cartCount(carts[table.id] ?? { lines: [] })
           return (
             <li key={table.id}>
-              <button type="button" className={`wt-table-card${table.occupied ? ' occupied' : ''}`} onClick={() => navigate(`masa/${table.id}`)}>
+              <button type="button" className={`wt-table-card${table.occupied ? ' occupied' : ''}${table.readyCount > 0 ? ' has-ready' : ''}`} onClick={() => navigate(`masa/${table.id}`)}>
                 <span className="wt-table-top">
                   <span className={`wt-table-status${table.occupied ? ' occupied' : ''}`}>{table.occupied ? 'Dolu' : 'Boş'}</span>
                   {pending > 0 && <span className="wt-table-pending" title="Gönderilmemiş sepet"><ShoppingBag size={12} aria-hidden="true" />{pending}</span>}

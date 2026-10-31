@@ -2,9 +2,9 @@
 // unlock() kullanıcı etkileşiminde çağrılır. Dosya gerektirmez, Web Audio ile üretilir.
 const PREF_KEY = 'waypoint-kitchen-sound'
 
-export const readSoundPref = () => { try { return localStorage.getItem(PREF_KEY) === '1' } catch { return false } }
-export function writeSoundPref(value) {
-  try { localStorage.setItem(PREF_KEY, value ? '1' : '0') } catch { /* Depolama kapalı olabilir. */ }
+export const readSoundPref = (key = PREF_KEY) => { try { return localStorage.getItem(key) === '1' } catch { return false } }
+export function writeSoundPref(value, key = PREF_KEY) {
+  try { localStorage.setItem(key, value ? '1' : '0') } catch { /* Depolama kapalı olabilir. */ }
 }
 
 export function createChime() {

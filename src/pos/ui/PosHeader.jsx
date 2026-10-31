@@ -1,7 +1,7 @@
 import { FlaskConical, LogOut } from 'lucide-react'
 
 // Personel ekranlarının ortak başlığı: QR menü başlığıyla aynı marka dili.
-export default function PosHeader({ subtitle, staff, demo, demoLink, onResetDemo, onSignOut, children }) {
+export default function PosHeader({ subtitle, staff, demo, demoLink, onResetDemo, onSignOut, actions, children }) {
   return (
     <header className="pos-header">
       <div className="pos-header-row">
@@ -14,6 +14,7 @@ export default function PosHeader({ subtitle, staff, demo, demoLink, onResetDemo
         </div>
         {staff && (
           <div className="pos-header-actions">
+            {actions}
             <span className="pos-staff-chip" title={staff.name}>{staff.name}</span>
             <button type="button" className="pos-icon-btn" onClick={onSignOut} aria-label="Çıkış yap">
               <LogOut size={18} />

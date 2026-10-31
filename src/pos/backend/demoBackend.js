@@ -118,6 +118,18 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
         .sort((a, b) => a.createdAt - b.createdAt)
     },
 
+    async listReadyNotifications() {
+      await wait(latencyMs / 3)
+      return allOrders(await load())
+        .filter(({ order }) => order.readyAt)
+        .sort((a, b) => b.order.readyAt - a.order.readyAt)
+        .map(({ tableId, order }) => ({
+          id: `ready-${order.id}`, orderId: order.id, orderNumber: order.orderNumber, status: order.status, source: order.source,
+          tableId, tableLabel: TABLES.find(table => table.id === tableId)?.label ?? tableId, at: order.readyAt,
+          items: order.items.map(item => ({ name: item.name, quantity: item.quantity })),
+        }))
+    },
+
     submit: ({ key, payload }) => place('waiter', payload.tableId, key, payload),
 
     async reconcile(submission) {
@@ -162,6 +174,7 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
           if (NEXT_STATUS[order.status] !== status) return { state: 'rejected', code: 'invalid_transition' }
           order.status = status
           order.updatedAt = now()
+          if (status === 'ready') order.readyAt = now()
           return { state: 'confirmed', order }
         })
       } catch {

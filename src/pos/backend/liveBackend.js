@@ -5,6 +5,7 @@ import { statusResult } from '../orderStatus.js'
 import { mapKitchenOrder, SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
 import { randomUUID } from '../../utils/uuid.js'
 import { readBillSnapshot } from './billSnapshot.js'
+import { HISTORY_LIMIT, HISTORY_WINDOW_MS, READY_NOTIFICATION_SELECT, mapNotificationRow } from '../waiter/notifications.js'
 
 const mapOrder = order => ({
   id: order.id,
@@ -78,6 +79,17 @@ export function createLiveBackend(supabase) {
         .order('created_at').limit(200)
       if (error) throw error
       return data.map(mapKitchenOrder)
+    },
+
+    // Hazır bildirimleri kalıcı durum geçmişinden okunur (RLS: yalnızca personel).
+    async listReadyNotifications() {
+      const since = new Date(Date.now() - HISTORY_WINDOW_MS).toISOString()
+      const { data, error } = await supabase.from('order_status_history')
+        .select(READY_NOTIFICATION_SELECT)
+        .eq('to_status', 'ready').gte('changed_at', since)
+        .order('id', { ascending: false }).limit(HISTORY_LIMIT)
+      if (error) throw error
+      return data.map(mapNotificationRow)
     },
 
     async setOrderStatus(orderId, status) {

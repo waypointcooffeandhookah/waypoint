@@ -2,7 +2,7 @@
 // Her rol ayrı Chrome profili ve ayrı işlemde çalışır; yine de AYNI bilgisayardadır, fiziksel cihaz testi değildir.
 // Ortam: E2E_BASE (ör. http://192.168.1.107:5173/waypoint → HTTPS olmayan, telefondaki koşulun aynısı).
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { STAGING_REF, PRODUCTION_REF } from '../../src/supabaseTarget.js'
@@ -293,6 +293,178 @@ try {
       await kitchen.cdp('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
       await kitchen.until(`document.querySelectorAll('.kt-ticket').length===${before + 1}`, 'bağlanınca yeni fiş', 30000)
       return `${((Date.now() - started) / 1000).toFixed(1)} sn içinde görüldü`
+    })
+
+    // ── Garson bildirimleri ──
+    const shot = async (page, name) => {
+      if (!process.env.E2E_SHOTS) return
+      const r = await page.cdp('Page.captureScreenshot', { format: 'jpeg', quality: 72 })
+      writeFileSync(join(process.env.E2E_SHOTS, `${name}.jpg`), Buffer.from(r.result.data, 'base64'))
+    }
+    const unread = page => page.ev(`document.querySelector('.wt-notify-count')?.innerText??'0'`)
+    const bannerCount = page => page.ev(`document.querySelectorAll('.wt-notify-banner').length`)
+    const openPanel = async page => { await page.click('.wt-bell'); await page.until(`document.querySelector('.wt-notify-panel')`, 'bildirim paneli') }
+    const closePanel = async page => { await page.click('.wt-notify-close'); await page.until(`!document.querySelector('.wt-notify-panel')`, 'panel kapandı') }
+    const newWaiterTicket = status => `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].find(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5')`
+    const advance = async (status, waitFor = 1) => {
+      const count = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].filter(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5').length`
+      // Beklenen fişlerin hepsi gelmeden sayılırsa sonradan gelen fiş sayımı bozar.
+      await kitchen.until(`${count}>=${waitFor}`, `mutfakta ${waitFor} ${status} fiş`, 12000)
+      const before = await kitchen.ev(count)
+      await kitchen.ev(`${newWaiterTicket(status)}.querySelector('.kt-action').click()`)
+      // Aynı fişe ikinci kez basılmasın: durum değişene kadar beklenir.
+      await kitchen.until(`${count}===${before - 1}`, `${status} fişi ilerledi`, 12000)
+    }
+    let product = ''
+    const sendOrder = async (page = waiter, quantity = 2) => {
+      await page.go('/garson')
+      await page.until(`document.querySelectorAll('.wt-table-card').length===10`, 'masalar')
+      await page.ev(`[...document.querySelectorAll('.wt-table-card')].find(c=>c.innerText.includes('Masa 5')).click()`)
+      await page.until(`document.querySelector('.wt-product:not(.out)')`, 'katalog')
+      product = await page.ev(`document.querySelector('.wt-product:not(.out)').innerText.split('\\n')[0]`)
+      await page.click('.wt-product:not(.out)')
+      await page.until(`document.querySelector('.wt-cart-bar')`, 'sepet çubuğu')
+      await page.click('.wt-cart-bar')
+      await page.until(`document.querySelector('[aria-label="Artır"]')`, 'sepet')
+      for (let i = 1; i < quantity; i++) await page.click('[aria-label="Artır"]')
+      await page.click('.wt-send')
+      await page.until(`document.querySelector('.wt-bill')`, 'adisyon')
+    }
+
+    await step('Bildirim: yenileme eski uyarıları tekrar göstermez, tümü okundu sayacı sıfırlar', async () => {
+      await waiter.go('/garson')
+      await waiter.until(`document.querySelectorAll('.wt-table-card').length===10`, 'masalar')
+      await sleep(1500)
+      expect(await bannerCount(waiter) === 0, 'yenilemede eski uyarı göründü')
+      await openPanel(waiter)
+      if (await waiter.ev(`!document.querySelector('.wt-notify-all').disabled`)) await waiter.click('.wt-notify-all')
+      await closePanel(waiter)
+      await waiter.until(`!document.querySelector('.wt-notify-count')`, 'sayaç sıfır')
+    })
+    await step('Garson siparişi → Hazırlanıyor: garson yenilemeden görür, uyarı çıkmaz', async () => {
+      await sendOrder()
+      await advance('new')
+      await waiter.until(`document.querySelector('.wt-order .pos-status-preparing')`, 'garsonda hazırlanıyor', 10000)
+      expect(await bannerCount(waiter) === 0 && await unread(waiter) === '0', 'hazırlanıyor durumunda uyarı çıktı')
+    })
+    await step('Hazır: garsona anında görünür uyarı; masa, ürün, adet ve saat doğru', async () => {
+      const started = Date.now()
+      await advance('preparing')
+      await waiter.until(`document.querySelector('.wt-notify-banner')`, 'hazır uyarısı', 10000)
+      const elapsed = ((Date.now() - started) / 1000).toFixed(1)
+      const text = (await waiter.ev(`document.querySelector('.wt-notify-banner').innerText`)).toLocaleLowerCase('tr')
+      for (const part of ['masa 5 — siparişiniz hazır!', `2 × ${product.toLocaleLowerCase('tr')}`, 'mutfaktan teslim alabilirsiniz']) expect(text.includes(part), `uyarıda yok: ${part} → ${text}`)
+      expect(/\d\d[:.]\d\d/.test(text), 'saat yok')
+      expect(await unread(waiter) === '1', `sayaç ${await unread(waiter)}`)
+      await waiter.until(`document.querySelector('.wt-order.ready .pos-status-ready')`, 'adisyonda hazır', 10000)
+      const box = await waiter.ev(`(()=>{const r=document.querySelector('.wt-notify-banner').getBoundingClientRect();return [r.left,r.right,innerWidth]})()`)
+      expect(box[0] >= 0 && box[1] <= box[2], `uyarı ekrana sığmıyor: ${box}`)
+      // Adisyon sayfası açıkken de gerçekten en üstte olmalı (DOM'da olması yetmez).
+      expect(await waiter.ev(`(()=>{const b=document.querySelector('.wt-notify-banner');const r=b.getBoundingClientRect();return b.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2))})()`), 'uyarı başka katmanın arkasında')
+      expect(await waiter.ev(`!!document.querySelector('.wt-side.open')`), 'senaryo adisyon açıkken çalışmalı')
+      await sleep(350)
+      await shot(waiter, 'banner-390')
+      return `${elapsed} sn içinde`
+    })
+    await step('Masa vurgusu ve geçmiş: yenilemede kalıcı, tekrar uyarmaz; panelden masa açılır, okundu olur', async () => {
+      await waiter.go('/garson')
+      await waiter.until(`[...document.querySelectorAll('.wt-table-card')].find(c=>c.innerText.includes('Masa 5'))?.classList.contains('has-ready')`, 'masa vurgusu')
+      await shot(waiter, 'tables-390')
+      await sleep(1500)
+      expect(await bannerCount(waiter) === 0, 'yenilemede uyarı tekrarlandı')
+      expect(await unread(waiter) === '1', 'okunmamış kayboldu')
+      await openPanel(waiter)
+      const entry = (await waiter.ev(`document.querySelector('.wt-notify-item').innerText`)).toLocaleLowerCase('tr')
+      expect(entry.includes('masa 5') && entry.includes(`2 × ${product.toLocaleLowerCase('tr')}`), `kayıt: ${entry}`)
+      await sleep(350)
+      await shot(waiter, 'panel-390')
+      await waiter.clickText('Masayı aç', '.wt-notify-item.unread button')
+      await waiter.until(`location.pathname.includes('/garson/masa/')&&document.querySelector('.wt-side.open .wt-bill')`, 'adisyon açıldı')
+      await waiter.until(`!document.querySelector('.wt-notify-count')`, 'okundu')
+    })
+    await step('Servis edildi: mutfak ve garson ekranları yenilemeden eşitlenir', async () => {
+      const served = await kitchen.ev(`document.querySelectorAll('.kt-ticket-served').length`)
+      await waiter.click('.wt-order.ready .wt-serve')
+      await kitchen.until(`document.querySelectorAll('.kt-ticket-served').length===${served + 1}`, 'mutfakta servis edildi', 10000)
+      await waiter.until(`document.querySelector('.wt-order .pos-status-served')`, 'garsonda servis edildi', 10000)
+    })
+    const second = await openPage()
+    await second.size(1366, 900)
+    await step('Birden çok sipariş ve farklı personel: iki cihaza ayrı uyarı, servis diğer cihazı düşürür', async () => {
+      await login(second, '/garson', creds.admin)
+      await second.until(`document.querySelectorAll('.wt-table-card').length===10`, 'yönetici masaları')
+      await openPanel(second)
+      if (await second.ev(`!document.querySelector('.wt-notify-all').disabled`)) await second.click('.wt-notify-all')
+      await closePanel(second)
+      await sendOrder(waiter, 1)
+      await sendOrder(waiter, 3)
+      await advance('new', 2); await advance('new')
+      await advance('preparing', 2); await advance('preparing')
+      for (const page of [waiter, second]) await page.until(`document.querySelectorAll('.wt-notify-banner').length===2`, 'iki ayrı uyarı', 12000)
+      expect(await unread(waiter) === '2' && await unread(second) === '2', 'sayaç 2 değil')
+      await shot(second, 'banners-1366')
+      await openPanel(second)
+      await second.ev(`document.querySelector('.wt-notify-panel .wt-notify-serve').click()`)
+      await waiter.until(`document.querySelector('.wt-notify-count')?.innerText==='1'`, 'diğer cihazda sayaç düştü', 12000)
+      await waiter.until(`document.querySelectorAll('.wt-notify-banner').length===1`, 'diğer cihazda uyarı kalktı', 12000)
+      await sleep(350)
+      await shot(second, 'panel-1366')
+      await closePanel(second)
+    })
+    await step('Yeniden bağlanma: kopukken hazır olan sipariş kaybolmaz ve tek kez bildirilir', async () => {
+      await sendOrder(waiter, 1)
+      await advance('new')
+      await waiter.until(`document.querySelector('.wt-order .pos-status-preparing')`, 'garsonda hazırlanıyor', 10000)
+      await sleep(500)
+      const before = Number(await unread(waiter)), banners = await bannerCount(waiter)
+      await waiter.cdp('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 })
+      await sleep(1500)
+      await advance('preparing')
+      await sleep(3000)
+      expect(Number(await unread(waiter)) === before, 'kopukken bildirim geldi: bağlantı gerçekten kopmadı')
+      await waiter.cdp('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+      await waiter.until(`document.querySelector('.wt-notify-count')?.innerText==='${before + 1}'`, 'kaçırılan bildirim', 25000)
+      await waiter.until(`document.querySelectorAll('.wt-notify-banner').length===${banners + 1}`, 'kaçırılan uyarı', 5000)
+      await sleep(17000) // Düzenli yenileme de çoğaltmamalı.
+      expect(Number(await unread(waiter)) === before + 1 && await bannerCount(waiter) === banners + 1, 'düzenli yenileme bildirimi çoğalttı')
+      await waiter.go('/garson')
+      await waiter.until(`document.querySelectorAll('.wt-table-card').length===10`, 'masalar')
+      await sleep(1500)
+      expect(await bannerCount(waiter) === 0 && Number(await unread(waiter)) === before + 1, 'yenilemede çoğaldı veya kayboldu')
+      await openPanel(waiter)
+      const ids = await waiter.ev(`[...document.querySelectorAll('.wt-notify-item')].map(i=>i.dataset.id)`)
+      expect(new Set(ids).size === ids.length, 'geçmişte çift kayıt')
+      await closePanel(waiter)
+      return `${ids.length} geçmiş kaydı, çift yok`
+    })
+    await step('Ses tercihi ve tarayıcı bildirimi durumu doğru; yetkisiz roller paneli göremez', async () => {
+      await openPanel(waiter)
+      expect(await waiter.ev(`document.querySelector('.wt-notify-sound').getAttribute('aria-pressed')`) === 'false', 'ses varsayılan kapalı değil')
+      await waiter.click('.wt-notify-sound')
+      await waiter.until(`document.querySelector('.wt-notify-sound').getAttribute('aria-pressed')==='true'`, 'ses açıldı')
+      const secure = await waiter.ev('window.isSecureContext')
+      const note = await waiter.ev(`document.querySelector('.wt-notify-browser').innerText`)
+      if (!secure) expect(note.includes('HTTPS'), `not: ${note}`)
+      await waiter.go('/garson')
+      await waiter.until(`document.querySelector('.wt-bell')`, 'zil')
+      await openPanel(waiter)
+      expect(await waiter.ev(`document.querySelector('.wt-notify-sound').getAttribute('aria-pressed')`) === 'true', 'ses tercihi korunmadı')
+      await waiter.click('.wt-notify-sound')
+      await closePanel(waiter)
+      expect(!await kitchen.ev(`!!document.querySelector('.wt-bell')`), 'mutfakta garson zili var')
+      return secure ? 'güvenli bağlam' : 'HTTP: tarayıcı bildirimi kapalı, uygulama içi açık'
+    })
+    await step('Yerleşim: bildirim paneli ve zil telefon, tablet ve masaüstünde taşmaz', async () => {
+      for (const [width, height] of [[320, 640], [390, 844], [430, 932], [820, 1180], [1366, 900]]) {
+        await waiter.size(width, height); await sleep(200)
+        expect(await waiter.ev('document.documentElement.scrollWidth - document.documentElement.clientWidth') === 0, `${width}px taşma`)
+        await openPanel(waiter)
+        await sleep(300)
+        const r = await waiter.ev(`(()=>{const b=document.querySelector('.wt-notify-panel').getBoundingClientRect();return [b.left,b.right,b.bottom,document.querySelector('.wt-bell').getBoundingClientRect().height]})()`)
+        expect(r[0] >= 0 && r[1] <= width && r[2] <= height && r[3] >= 44, `${width}px panel: ${r}`)
+        await closePanel(waiter)
+      }
+      await waiter.size(390, 844)
     })
   }
 

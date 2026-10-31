@@ -19,6 +19,8 @@ Staging modu yalnızca `waypoint-pos-staging` projesine bağlanır. Ayar eksik v
 3. Başlatma: `npm run dev:staging` → `http://<bilgisayar-ip>:5173/waypoint/`
 4. Testler: `npm run test:staging` (API) ve `E2E_BASE=http://<bilgisayar-ip>:5173/waypoint npm run test:e2e:staging` (tarayıcı). QR kodları git dışı `.staging-qr.local` dosyasındadır.
 
+Garson bildirimleri `order_status_history` kayıtlarından okunur; panel açıkken çalışır ve bağlanınca kaçırılanları tamamlar. Okundu bilgisi cihaza özeldir. Arka plan push bildirimi yoktur: HTTPS, service worker ve Web Push gerektirir.
+
 `supabase/staging/` yalnızca staging içindir, üretimde çalıştırılmaz. Test siparişlerini silmeden kapatmak için `03_close_test_orders.sql` kullanılır.
 
 # React + Vite
