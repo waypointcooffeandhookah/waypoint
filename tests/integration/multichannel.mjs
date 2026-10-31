@@ -1,9 +1,9 @@
 // Masa, paket ve kurye akışının gerçek staging testi (npm run test:multichannel).
 // Yalnızca staging'e bağlanır; kurgusal müşteri ve adres kullanır, veri silmez.
 import { readFileSync } from 'node:fs'
-import { randomInt, randomUUID } from 'node:crypto'
+import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
-import { STAGING_REF } from '../../src/supabaseTarget.js'
+import { PRODUCTION_REF, STAGING_REF } from '../../src/supabaseTarget.js'
 import { READY_NOTIFICATION_SELECT } from '../../src/pos/waiter/notifications.js'
 import { FULFILLMENT_SELECT } from '../../src/pos/fulfillment/fulfillmentOrders.js'
 
@@ -52,6 +52,41 @@ const walk = async (db, id, statuses) => {
 const track = async token => (await anon.rpc('get_order_tracking', { p_tracking_token: token })).data
 const shared = {}
 
+await step('Katalog: üretimle aynı ürün, kategori, fiyat ve stok; görseller bayt bayt aynı (üretim yalnızca okunur)', async () => {
+  const prodOrigin = `https://${PRODUCTION_REF}.supabase.co`, prodKey = /eyJ[\w.-]+/.exec(readFileSync(new URL('src/config.js', root), 'utf8'))[0]
+  const prodGet = async path => (await fetch(`${prodOrigin}/rest/v1/${path}`, { method: 'GET', headers: { apikey: prodKey, Authorization: `Bearer ${prodKey}` } })).json()
+  const [prodCats, prodItems] = [await prodGet('categories?select=*'), await prodGet('menu_items?select=*')]
+  const stagingCats = (await anon.from('categories').select('*')).data
+  const stagingItems = (await anon.from('menu_items').select('*, categories(name)')).data
+  expect(prodItems.length === 104 && prodCats.length === 11, `üretim ${prodCats.length}/${prodItems.length}`)
+  expect(stagingCats.length === 11, `staging kategori ${stagingCats.length}`)
+  const prodCatName = new Map(prodCats.map(cat => [cat.id, cat.name]))
+  const byName = new Map(stagingItems.map(item => [item.name, item]))
+  expect(byName.size === stagingItems.length, 'staging ürünlerinde kopya ad')
+  expect(prodCats.every(cat => stagingCats.some(row => row.name === cat.name && row.sort_order === cat.sort_order)), 'kategori sırası')
+  const hashes = new Map()
+  const imageHash = async url => {
+    if (!hashes.has(url)) {
+      const response = await fetch(url)
+      expect(response.ok && /^image\//.test(response.headers.get('content-type') ?? ''), `bozuk görsel: ${url}`)
+      hashes.set(url, createHash('sha256').update(new Uint8Array(await response.arrayBuffer())).digest('hex'))
+    }
+    return hashes.get(url)
+  }
+  for (const item of prodItems) {
+    const row = byName.get(item.name)
+    expect(row, `eksik ürün: ${item.name}`)
+    expect(Number(row.price) === Number(item.price) && row.is_available === item.is_available && row.description === item.description, `alan farkı: ${item.name}`)
+    expect(row.categories.name === prodCatName.get(item.category_id), `kategori farkı: ${item.name}`)
+    if (!item.image_url) { expect(!row.image_url, `uydurma görsel: ${item.name}`); continue }
+    expect(row.image_url.startsWith(env.VITE_SUPABASE_URL), `üretime bağlı görsel: ${item.name}`)
+    expect(await imageHash(row.image_url) === await imageHash(item.image_url), `farklı fotoğraf: ${item.name}`)
+  }
+  const extra = stagingItems.filter(item => !prodItems.some(prod => prod.name === item.name))
+  expect(extra.length === 1 && extra[0].categories.name === 'Taze Meyve Suları' && extra[0].is_available === false, `beklenmeyen ürün: ${extra.map(i => i.name)}`)
+  return `${prodItems.length} ürün, ${prodCats.length} kategori, ${hashes.size / 2} görsel aynı`
+})
+
 await step('1. Masa 5 siparişi mutfağa ve masa adisyonuna gider', async () => {
   const { data, error } = await anon.rpc('place_qr_order', { p_table_token: tokens['Masa 5'], p_idempotency_key: randomUUID(), p_items: [line(COFFEE, 2)], p_note: 'TEST multichannel' })
   expect(!error, error?.message)
@@ -67,7 +102,7 @@ await step('2. Paket: masasız mutfağa düşer, numara ve takip kodu üretilir,
   const { data, error } = await place('pickup', [line(COFFEE, 2)])
   expect(!error, error?.message)
   shared.pickup = data
-  expect(Number(data.total_cents) === 18000 && Number(data.delivery_fee_cents) === 0, `toplam ${data.total_cents}`)
+  expect(Number(data.total_cents) === 16000 && Number(data.delivery_fee_cents) === 0, `toplam ${data.total_cents}`)
   expect(/^[0-9a-f]{64}$/.test(data.tracking_token), 'takip kodu')
   const row = await kitchen.from('orders').select('table_id, session_id, bill_id, fulfillment_type').eq('id', data.order_id).single()
   expect(row.data.table_id === null && row.data.session_id === null && row.data.bill_id === null && row.data.fulfillment_type === 'pickup', JSON.stringify(row.data))
@@ -78,8 +113,8 @@ await step('3 ve 5. Kurye: geçerli adresle mutfağa düşer; ücret ve toplam s
   const { data, error } = await place('delivery', [{ ...line(ESPRESSO, 2), price: 1, unit_price_cents: 1 }], { p_address: address({ fee_cents: 0 }) })
   expect(!error, error?.message)
   shared.delivery = data
-  expect(Number(data.subtotal_cents) === 17500 && Number(data.delivery_fee_cents) === 3000 && Number(data.total_cents) === 20500, `${data.subtotal_cents}+${data.delivery_fee_cents}=${data.total_cents}`)
-  return `175,00 + 30,00 = 205,00 ₺, #${data.order_number}`
+  expect(Number(data.subtotal_cents) === 20000 && Number(data.delivery_fee_cents) === 3000 && Number(data.total_cents) === 23000, `${data.subtotal_cents}+${data.delivery_fee_cents}=${data.total_cents}`)
+  return `200,00 + 30,00 = 230,00 ₺, #${data.order_number}`
 })
 
 await step('4. Geçersiz adres ve kurallar reddedilir, kayıt oluşmaz', async () => {

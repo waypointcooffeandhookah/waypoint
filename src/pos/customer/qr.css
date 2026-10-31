@@ -261,3 +261,18 @@
 .qr-channel-chip { flex-shrink: 1; min-width: 0; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; }
 .qr-channel-chip svg { flex-shrink: 0; }
 @media (max-width: 380px) { .qr-channel-chip { font-size: 0.72rem; padding: 5px 9px; max-width: 38vw; } }
+
+/* ─── Ürün penceresinden sepete geçiş: sayfa kaydırılsa da altta kalır ─── */
+.qr-modal-continue {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  flex-shrink: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(21, 17, 15, 0.82) 0%, #15110f 34%);
+  border-top: 1px solid var(--pos-teal-line);
+  animation: qr-continue-in 0.2s ease-out;
+}
+@keyframes qr-continue-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.qr-continue, .qr-continue-channel { width: 100%; min-height: 54px; font-size: 1rem; }
+@media (prefers-reduced-motion: reduce) { .qr-modal-continue { animation: none; } }

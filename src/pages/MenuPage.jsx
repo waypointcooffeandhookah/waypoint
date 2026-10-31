@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   Layers,
   X,
+  ShoppingBag,
 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { trLower, getAssetUrl, getItemImage, getItemDescription } from '../utils/imageUtils'
@@ -410,6 +411,9 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
     </div>
   )
 
+  // Tanıtım penceresi açıkken sipariş katmanı beklemede kalır; iki pencere üst üste binmez.
+  const promotionVisible = !showHero && !promotionDismissed && !selectedProduct && items.some(item => item.id === promotionId && item.is_available !== false)
+
   return (
     <div className={`menu-root-wrap${ordering ? ' qr-ordering' : ''}`}>
       {/* ── 1. ULTRA LUXURY OPENING HERO SCREEN (Waypoint Dark Palette) ── */}
@@ -539,7 +543,7 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
       </div>
 
       {/* ── 3. PRODUCT SHOWCASE / VITRIN MODAL (Direct child of root to avoid stacking context issues) ── */}
-      {!showHero && !promotionDismissed && !selectedProduct && items.some(item => item.id === promotionId && item.is_available !== false) && (
+      {promotionVisible && (
         <WelcomePromotion product={items.find(item => item.id === promotionId)} onClose={closePromotion} onOpen={product => {
           closePromotion()
           setShowHero(false)
@@ -553,9 +557,10 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
           product={selectedProduct}
           onClose={closeProduct}
           ordering={ordering}
+          onOpenSheet={sheet => { closeProduct(); ordering.openSheet(sheet) }}
         />
       )}
-      {!showHero && !selectedProduct && orderLayer}
+      {!showHero && !selectedProduct && !promotionVisible && orderLayer}
     </div>
   )
 }
@@ -772,7 +777,7 @@ const EditorialProductCard = memo(function EditorialProductCard({ item, delay, o
 })
 
 // ── 3. PRODUCT SHOWCASE / VITRIN BOTTOM SHEET MODAL (Dark Luxury) ──
-function ProductVitrinModal({ product, onClose, ordering }) {
+function ProductVitrinModal({ product, onClose, ordering, onOpenSheet }) {
   const dialogRef = useDialog(onClose)
 
   const imgUrl = getItemImage(product)
@@ -887,13 +892,29 @@ function ProductVitrinModal({ product, onClose, ordering }) {
 
           {!isGroup && ordering?.orderable(product) ? (
             <div className="qr-modal-order"><ordering.OrderControl ordering={ordering} item={product} wide /></div>
-          ) : ordering?.status === 'ready' && isGroup ? null : (
+          ) : (ordering?.status === 'ready' && isGroup) || ordering?.needsChannel ? null : (
             /* Footer Note */
             <div className="modal-sheet-footer-note">
               <span>Siparişinizi servis personelimize iletebilirsiniz.</span>
             </div>
           )}
         </div>
+
+        {/* Adet seçildikten sonraki adım: sayfa kaydırılsa da görünür kalır. Sepet katmanı modal kapanınca açılır. */}
+        {ordering?.canCheckout && ordering.count > 0 && (
+          <div className="qr-modal-continue">
+            <button type="button" className="pos-btn pos-btn-primary qr-continue" onClick={() => onOpenSheet('cart')}>
+              <ShoppingBag size={19} aria-hidden="true" /> Sepeti Gör — {ordering.cartTotalLabel}
+            </button>
+          </div>
+        )}
+        {ordering?.needsChannel && (
+          <div className="qr-modal-continue">
+            <button type="button" className="pos-btn pos-btn-primary qr-continue-channel" onClick={() => onOpenSheet('channel')}>
+              Sipariş vermek için tür seçin
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

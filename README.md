@@ -23,6 +23,8 @@ Garson bildirimleri `order_status_history` kayıtlarından okunur; panel açıkk
 
 Paket ve kurye: genel menü kanal seçimini sunar (`fulfillment_settings` açıksa; varsayılan kapalıdır, bölge ve ücretler `delivery_zones` tablosundadır). Teslimat yönetimi `/waypoint/siparisler` (kasiyer, müdür, yönetici), müşteri takibi `/waypoint/siparis/<kod>`. Testler: `npm run test:multichannel` ve `npm run test:e2e:multichannel`.
 
+Menü aktarımı: `npm run staging:menu` üretimi yalnızca okur ve staging ile karşılaştırır; `npm run staging:menu -- --apply` staging'e uygular. Silme yapmaz, tekrar çalıştırılabilir.
+
 `supabase/staging/` yalnızca staging içindir, üretimde çalıştırılmaz. Test siparişlerini silmeden kapatmak için `03_close_test_orders.sql` kullanılır.
 
 # React + Vite

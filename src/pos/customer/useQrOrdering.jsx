@@ -6,6 +6,7 @@ import { IS_STAGING } from '../../config'
 import { getItemImage } from '../../utils/imageUtils'
 import { cartCount, cartReducer, emptyCart, quantityOf, toOrderPayloadLines } from '../cart'
 import { loadCatalog } from '../catalog'
+import { estimateTotalCents, formatCents } from '../money'
 import { createSubmission } from '../orderSubmission'
 import { useOrderSync } from '../useOrderSync'
 import { detectPosMode } from '../backend/staffAuth'
@@ -186,6 +187,9 @@ export function useQrOrdering(token) {
     cart,
     dispatch,
     count: cartCount(cart),
+    canCheckout: status === 'ready',
+    needsChannel: false,
+    cartTotalLabel: formatCents(estimateTotalCents(cart.lines)),
     locked,
     orders,
     ordersError,

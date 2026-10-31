@@ -39,8 +39,8 @@ const scenario = { first: null, second: null, keys: [] }
 await step('Anonim: menü ve fiyatlar okunur', async () => {
   const { data, error } = await anon.from('menu_items').select('name, price, is_available, categories(name)')
   expect(!error, error?.message)
-  expect(data.length === 8, `ürün sayısı ${data.length}`)
-  expect(Number(data.find(i => i.name === 'Espresso').price) === 87.5, 'Espresso fiyatı')
+  expect(data.length === 105, `ürün sayısı ${data.length}`)
+  expect(Number(data.find(i => i.name === 'Espresso').price) === 100, 'Espresso fiyatı')
   expect(data.every(i => i.categories?.name), 'kategori ilişkisi eksik')
   return `${data.length} ürün`
 })
@@ -90,10 +90,10 @@ await step('Senaryo: Masa 5 müşterisi 2 kahve sipariş eder, fiyat sunucudan g
   const { data, error } = await place('Masa 5', [{ ...line(COFFEE, 2), price: 1, unit_price_cents: 1, table_id: randomUUID() }], key)
   expect(!error, error?.message)
   expect(data.table_label === 'Masa 5' && data.status === 'new' && data.source === 'qr', JSON.stringify(data))
-  expect(Number(data.subtotal_cents) === 18000, `tutar ${data.subtotal_cents}`)
+  expect(Number(data.subtotal_cents) === 16000, `tutar ${data.subtotal_cents}`)
   scenario.first = data; scenario.keys.push(key)
   scenario.firstKey = key
-  return `sipariş #${data.order_number}, 180,00 ₺`
+  return `sipariş #${data.order_number}, 160,00 ₺`
 })
 
 await step('Tekrar deneme: aynı anahtar yeni sipariş üretmez', async () => {
@@ -110,7 +110,7 @@ await step('Senaryo: ikinci müşteri aynı masaya sipariş verir, ilkini görem
   const other = client(), key = randomUUID()
   const { data, error } = await place('Masa 5', [line(ESPRESSO, 3)], key, {}, other)
   expect(!error, error?.message)
-  expect(Number(data.subtotal_cents) === 26250, `tutar ${data.subtotal_cents}`)
+  expect(Number(data.subtotal_cents) === 30000, `tutar ${data.subtotal_cents}`)
   scenario.second = data; scenario.secondKey = key
   const mine = await other.rpc('get_qr_orders', { p_table_token: tokens['Masa 5'], p_idempotency_keys: [key] })
   expect(mine.data.length === 1 && mine.data[0].order_id === data.order_id, 'kendi siparişi')
@@ -345,8 +345,8 @@ if (!creds) {
     const ids = orders.data.map(o => o.id)
     for (const o of [scenario.first, scenario.second, scenario.third, scenario.fourth]) expect(ids.includes(o.order_id), `eksik sipariş ${o.order_number}`)
     const lines = orders.data.flatMap(o => o.order_items)
-    expect(lines.some(l => l.item_name === 'Türk Kahvesi' && l.quantity === 2 && Number(l.line_total_cents) === 18000), 'kahve satırı')
-    expect(lines.some(l => l.item_name === 'Espresso' && l.quantity === 3 && Number(l.line_total_cents) === 26250), 'espresso satırı')
+    expect(lines.some(l => l.item_name === 'Türk Kahvesi' && l.quantity === 2 && Number(l.line_total_cents) === 16000), 'kahve satırı')
+    expect(lines.some(l => l.item_name === 'Espresso' && l.quantity === 3 && Number(l.line_total_cents) === 30000), 'espresso satırı')
     const sum = lines.reduce((total, l) => total + Number(l.line_total_cents), 0)
     expect(Number(bill.total_cents) === sum, `özet ${bill.total_cents} ≠ satırlar ${sum}`)
     return `${orders.data.length} sipariş, ${sum / 100} ₺`

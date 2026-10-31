@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient'
 import { getItemImage } from '../../utils/imageUtils'
 import { cartCount, cartReducer, emptyCart, quantityOf, toOrderPayloadLines } from '../cart'
 import { loadCatalog } from '../catalog'
-import { estimateTotalCents } from '../money'
+import { estimateTotalCents, formatCents } from '../money'
 import { createSubmission, reconcileOrder, submitOrder } from '../orderSubmission'
 import { checkDeliveryAddress, getOrderTracking, getOrderingConfig, onlineOrderTransport } from '../posApi'
 import { useOrderSync } from '../useOrderSync'
@@ -198,6 +198,9 @@ export function useOnlineOrdering(config) {
     cart,
     dispatch,
     count: cartCount(cart),
+    canCheckout: Boolean(orderingChannel),
+    needsChannel: !orderingChannel,
+    cartTotalLabel: formatCents(subtotalCents),
     locked,
     submitState,
     rejectCode,

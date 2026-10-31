@@ -16,6 +16,7 @@
     "test:e2e:staging": "node tests/e2e/staging-flow.mjs",
     "test:multichannel": "node tests/integration/multichannel.mjs",
     "test:e2e:multichannel": "node tests/e2e/multichannel-flow.mjs",
+    "staging:menu": "node scripts/staging-import-menu.mjs",
     "staging:staff": "node scripts/staging-create-staff.mjs"
   },
   "dependencies": {

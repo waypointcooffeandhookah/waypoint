@@ -1,4 +1,4 @@
-import { defaultProductDescription } from './productDescriptions'
+import { defaultProductDescription } from './productDescriptions.js'
 
 // ── Turkish Lowercase Helper ──
 export function trLower(s) {

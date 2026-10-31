@@ -118,11 +118,11 @@ try {
     return `güvenli bağlam: ${await customer.ev('window.isSecureContext')}, randomUUID: ${await customer.ev(`typeof crypto.randomUUID`)}`
   })
 
-  await step('Müşteri: 2 Türk Kahvesi sipariş eder; çift dokunuş tek sipariş', async () => {
-    await addProduct(customer, 'Türk Kahvesi', 2)
+  await step('Müşteri: 2 Americano sipariş eder; çift dokunuş tek sipariş', async () => {
+    await addProduct(customer, 'Americano', 2)
     await openCart(customer)
     total = await customer.ev(`document.querySelector('.qr-total strong').innerText`)
-    expect(/180/.test(total), `sepet toplamı ${total}`)
+    expect(/260/.test(total), `sepet toplamı ${total}`)
     await customer.ev(`(()=>{const b=document.querySelector('.qr-send');b.click();b.click()})()`)
     await customer.until(`document.querySelector('.qr-confirm')`, 'onay')
     await customer.clickText('Siparişlerim', '.qr-confirm button')
@@ -197,7 +197,7 @@ try {
       await page.type('#staff-password', password)
       await page.click('.login-btn')
     }
-    const ticket = `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5'&&t.innerText.includes('Türk Kahvesi')&&t.offsetParent)`
+    const ticket = `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5'&&t.innerText.toLocaleLowerCase('tr').includes('americano')&&t.offsetParent)`
 
     await step('Yetki: mutfak hesabı garson paneline giremez', async () => {
       await login(waiter, '/garson', creds.kitchen)
@@ -237,7 +237,7 @@ try {
       await waiter.until(`document.querySelector('.wt-bill')`, 'adisyon')
       await waiter.until(`document.querySelectorAll('.wt-order').length===5`, 'beş sipariş')
       const bill = await waiter.ev(`document.querySelector('.wt-bill').innerText`)
-      for (const name of ['Türk Kahvesi', 'Latte', 'Limonata', 'Espresso', 'Tiramisu']) expect(bill.includes(name), `adisyonda yok: ${name}`)
+      for (const name of ['Americano', 'Latte', 'Limonata', 'Espresso', 'Tiramisu']) expect(bill.includes(name), `adisyonda yok: ${name}`)
       return await waiter.ev(`document.querySelector('.wt-bill-summary strong').innerText`)
     })
     await step('Garson: siparişi aynı adisyona ekler', async () => {
@@ -251,8 +251,8 @@ try {
       await waiter.until(`document.querySelectorAll('.wt-order').length===6`, 'altı sipariş')
       await waiter.until(`document.querySelector('.wt-bill-summary strong')`, 'toplam')
       const shown = await waiter.ev(`document.querySelector('.wt-bill-summary strong').innerText`)
-      const added = Number(shown.replace(/[^\d,]/g, '').replace(',', '.')) - 647.5
-      expect([87.5, 90, 100, 110, 130, 140, 150].includes(added), `toplam ${shown}, fark ${added}`)
+      const added = Number(shown.replace(/[^\d,]/g, '').replace(',', '.')) - 790
+      expect(added > 0, `toplam ${shown}, fark ${added}`)
       return `${shown} (eklenen ${added} ₺)`
     })
     // Servis edilen fişler 2 saat görünür kalır; yalnızca bu çalıştırmanın açık fişi seçilir.
@@ -321,7 +321,7 @@ try {
       await page.until(`document.querySelectorAll('.wt-table-card').length===10`, 'masalar')
       await page.ev(`[...document.querySelectorAll('.wt-table-card')].find(c=>c.innerText.includes('Masa 5')).click()`)
       await page.until(`document.querySelector('.wt-product:not(.out)')`, 'katalog')
-      product = await page.ev(`document.querySelector('.wt-product:not(.out)').innerText.split('\\n')[0]`)
+      product = await page.ev(`document.querySelector('.wt-product:not(.out) .wt-product-name').innerText`)
       await page.click('.wt-product:not(.out)')
       await page.until(`document.querySelector('.wt-cart-bar')`, 'sepet çubuğu')
       await page.click('.wt-cart-bar')

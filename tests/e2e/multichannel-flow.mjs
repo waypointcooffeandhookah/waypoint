@@ -85,6 +85,34 @@ const enterMenu = async (page, path) => {
   await page.until(`[...document.querySelectorAll('button')].some(b=>b.innerText.includes('MENÜYÜ KEŞFET'))`, 'karşılama ekranı')
   await page.clickText('MENÜYÜ KEŞFET')
   await page.until(`document.querySelector('.menu-search')&&!document.querySelector('.hero-viewport')`, 'menü')
+  // Gerçek müşteri gibi tanıtım penceresini kapat; o açıkken sipariş sayfası üst üste binmemeli.
+  await sleep(1200)
+  if (await page.ev(`!!document.querySelector('.promotion-close')`)) {
+    expect(!await page.ev(`!!document.querySelector('.qr-sheet')`), 'tanıtım ve sipariş sayfası üst üste bindi')
+    await page.click('.promotion-close')
+    await page.until(`!document.querySelector('.promotion-close')`, 'tanıtım kapandı')
+  }
+}
+const cardOf = name => `[...document.querySelectorAll('.editorial-card')].find(c=>c.querySelector('.editorial-card-title')?.innerText.toLocaleLowerCase('tr')===${JSON.stringify(name.toLocaleLowerCase('tr'))})`
+const openProduct = async (page, name) => {
+  await page.type('.menu-search', name)
+  await page.until(cardOf(name), `${name} kartı`)
+  await page.ev(`${cardOf(name)}.click()`)
+  await page.until(`document.querySelector('.modal-sheet [id="product-modal-title"]')`, 'ürün penceresi')
+}
+// Ürün → adet → Sepeti Gör: düğme ekranda ve en üstte olmalı; basınca pencere kapanıp sepet açılmalı.
+const continueToCart = async (page, totalPattern) => {
+  await page.until(`document.querySelector('.qr-continue')`, 'Sepeti Gör düğmesi', 5000)
+  await sleep(300)
+  const box = await page.ev(`(()=>{const b=document.querySelector('.qr-continue');const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height,w:innerWidth,h:innerHeight,onTop:b.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)),text:b.innerText}})()`)
+  expect(box.onTop, 'düğme başka katmanın arkasında')
+  expect(box.bottom <= box.h && box.top >= 0 && box.left >= 0 && box.right <= box.w, `düğme ekran dışında: ${JSON.stringify(box)}`)
+  expect(box.height >= 44, `düğme yüksekliği ${box.height}`)
+  expect(/Sepeti Gör/i.test(box.text) && totalPattern.test(box.text), `düğme metni: ${box.text}`)
+  await page.click('.qr-continue')
+  await page.until(`document.querySelector('.qr-sheet .qr-send')&&!document.querySelector('[id="product-modal-title"]')`, 'sepet açıldı', 5000)
+  expect(await page.ev(`document.querySelectorAll('.modal-sheet').length`) === 1, 'pencereler üst üste')
+  expect(await page.ev('document.body.style.overflow') === 'hidden', 'kaydırma kilidi')
 }
 const addProduct = async (page, name, expectedCount) => {
   await page.type('.menu-search', name)
@@ -121,13 +149,30 @@ try {
     expect(await customer.overflow() === 0, 'taşma')
   })
 
-  await step('Paket: form doğrulanır, çift dokunuş tek sipariş, ücret eklenmez', async () => {
+  await step('Kanal seçilmeden ürün açılınca sonraki adım gösterilir, seçim sayfasına gider', async () => {
+    await customer.clickText('Yalnızca menüye göz at')
+    await customer.until(`!document.querySelector('.qr-sheet')`, 'sayfa kapandı')
+    await openProduct(customer, 'Americano')
+    await customer.until(`document.querySelector('.qr-continue-channel')`, 'tür seçme düğmesi')
+    expect(!await customer.ev(`!!document.querySelector('.qr-continue')`), 'sepet düğmesi erken çıktı')
+    await customer.click('.qr-continue-channel')
+    await customer.until(`document.querySelectorAll('.qr-channel').length===3&&!document.querySelector('[id="product-modal-title"]')`, 'kanal kartları')
+  })
+
+  await step('Paket: Ürün → Adet → Sepeti Gör → form doğrulanır, çift dokunuş tek sipariş, ücret eklenmez', async () => {
     await customer.click('[data-channel="pickup"]')
     await customer.until(`!document.querySelector('.qr-sheet')`, 'sayfa kapandı')
     await customer.until(`document.querySelector('.qr-channel-chip')?.innerText.includes('Paket')`, 'kanal etiketi')
-    await addProduct(customer, 'Türk Kahvesi', 1)
-    await customer.click('.qr-bar-cart')
-    await customer.until(`document.querySelector('.qr-send')`, 'ödeme adımı')
+    await openProduct(customer, 'Americano')
+    await customer.until(`document.querySelector('.qr-add-wide')`, 'sepete ekle')
+    expect(!await customer.ev(`!!document.querySelector('.qr-continue')`), 'boş sepette düğme çıktı')
+    await customer.click('.qr-add-wide')
+    await customer.until(`document.querySelector('.modal-sheet [aria-label="Artır"]')`, 'adet seçici')
+    await customer.click('.modal-sheet [aria-label="Artır"]')
+    await customer.until(`document.querySelector('.qr-continue')?.innerText.includes('260')`, 'güncel toplam')
+    await customer.shot('product-continue-390')
+    await continueToCart(customer, /260,00/)
+    expect(/Americano/i.test(await customer.ev(`document.querySelector('.qr-line').innerText`)), 'sepette ürün yok')
     expect(!await customer.ev(`!!document.querySelector('#online-street')`), 'pakette adres soruldu')
     await customer.click('.qr-send')
     await customer.until(`document.querySelector('#online-name-error')&&document.querySelector('#online-phone-error')`, 'form hataları')
@@ -136,7 +181,7 @@ try {
     await customer.type('#online-phone', PICKUP_PHONE)
     await customer.shot('pickup-checkout-390')
     const total = await customer.ev(`document.querySelector('.qr-total strong').innerText`)
-    expect(/90/.test(total), `toplam ${total}`)
+    expect(/260/.test(total), `toplam ${total}`)
     await customer.ev(`(()=>{const b=document.querySelector('.qr-send');b.click();b.click()})()`)
     await customer.until(`document.querySelector('.qr-confirm')`, 'onay')
     orders.pickup = (await customer.ev(`document.querySelector('.qr-confirm-number').innerText`)).slice(1)
@@ -155,11 +200,14 @@ try {
     expect(!body.includes(NAME) && !body.includes(PICKUP_PHONE), 'mutfakta kişisel veri')
   })
 
-  await step('Kurye: sepet kanal değişiminde korunur; ücret bilinmeden gönderilemez; alan dışı ve asgari tutar engellenir', async () => {
+  await step('Kurye: varyantlı ürün → Sepeti Gör; sepet kanal değişiminde korunur; ücret bilinmeden gönderilemez; alan dışı ve asgari tutar engellenir', async () => {
     await customer.until(`!document.querySelector('.qr-sheet')`, 'sayfa kapandı')
-    await customer.type('.menu-search', 'Türk Kahvesi')
-    await addProduct(customer, 'Türk Kahvesi', 1)
-    await customer.click('.qr-bar-cart')
+    await openProduct(customer, 'Geleneksel Türk Kahvesi')
+    const variant = `[...document.querySelectorAll('.modal-variant-row')].find(r=>r.querySelector('.modal-variant-name').innerText.toLocaleLowerCase('tr')==='türk kahvesi')`
+    await customer.until(`${variant}?.querySelector('.qr-add')`, 'varyant ekleme düğmesi')
+    await customer.ev(`${variant}.querySelector('.qr-add').click()`)
+    await customer.shot('variant-continue-390')
+    await continueToCart(customer, /80,00/)
     await customer.until(`document.querySelector('.qr-switch')`, 'değiştir düğmesi')
     await customer.click('.qr-switch')
     await customer.until(`document.querySelector('[data-channel="delivery"]')`, 'kanal kartları')
@@ -183,11 +231,11 @@ try {
     await customer.until(`!document.querySelector('.qr-below-min')&&!document.querySelector('.qr-send').disabled`, 'gönderim açıldı', 8000)
     const fee = await customer.ev(`document.querySelector('.qr-fee').innerText`)
     const total = await customer.ev(`document.querySelector('.qr-total strong').innerText`)
-    expect(/30,00/.test(fee) && /210,00/.test(total), `ücret ${fee}, toplam ${total}`)
+    expect(/30,00/.test(fee) && /190,00/.test(total), `ücret ${fee}, toplam ${total}`)
     await customer.type('#online-building', '3')
     await customer.type('#online-instructions', 'Kurgusal teslimat notu')
     await customer.shot('delivery-checkout-390')
-    return `180,00 + 30,00 = ${total}`
+    return `160,00 + 30,00 = ${total}`
   })
 
   await step('Kurye: yanıt kopsa da tek sipariş; toplam sunucudan gelir', async () => {
@@ -201,7 +249,7 @@ try {
     await customer.until(`document.querySelector('.qr-confirm')`, 'onay')
     orders.delivery = (await customer.ev(`document.querySelector('.qr-confirm-number').innerText`)).slice(1)
     orders.deliveryLink = await customer.ev(`document.querySelector('.qr-track-link').getAttribute('href')`)
-    expect(/210,00/.test(await customer.ev(`document.querySelector('.qr-confirm-total').innerText`)), 'onay toplamı')
+    expect(/190,00/.test(await customer.ev(`document.querySelector('.qr-confirm-total').innerText`)), 'onay toplamı')
     await customer.shot('delivery-confirm-390')
     return `#${orders.delivery}`
   })
@@ -217,13 +265,14 @@ try {
     expect(tally === 1, `çift kurye fişi: ${tally}`)
   })
 
-  await step('Masa QR: masa seçili açılır, fiş "MASA 5" ve adisyona eklenir; garson görür', async () => {
+  await step('Masa QR: Ürün → Adet → Sepeti Gör; masa seçili açılır, fiş "MASA 5" ve adisyona eklenir; garson görür', async () => {
     await enterMenu(customer, `/masa/${tokens['Masa 5']}`)
     await customer.until(`document.querySelector('.qr-table-chip')?.innerText.includes('Masa 5')`, 'masa etiketi')
     await customer.until(`document.querySelector('.qr-other-channels')`, 'diğer kanallara bağlantı')
-    await addProduct(customer, 'Limonata', 1)
-    await customer.click('.qr-bar-cart')
-    await customer.until(`document.querySelector('.qr-send')`, 'sepet')
+    await openProduct(customer, 'Limonata')
+    await customer.until(`document.querySelector('.qr-add-wide')`, 'sepete ekle')
+    await customer.click('.qr-add-wide')
+    await continueToCart(customer, /50,00/)
     expect(!await customer.ev(`!!document.querySelector('#online-name')`), 'masa siparişinde kişisel bilgi soruldu')
     await customer.click('.qr-send')
     await customer.until(`document.querySelector('.qr-confirm')`, 'onay')
@@ -234,6 +283,13 @@ try {
     await kitchen.shot('kitchen-types-1366')
     await login(waiter, '/garson', creds.waiter)
     await waiter.until(`[...document.querySelectorAll('.wt-table-card')].find(c=>c.innerText.includes('Masa 5'))?.classList.contains('occupied')`, 'garsonda dolu masa')
+    await waiter.ev(`[...document.querySelectorAll('.wt-table-card')].find(c=>c.innerText.includes('Masa 5')).click()`)
+    await waiter.until(`document.querySelector('.wt-bill-btn')`, 'masa görünümü')
+    await waiter.click('.wt-bill-btn')
+    await waiter.until(`document.querySelector('.wt-bill')?.innerText.toLocaleLowerCase('tr').includes('limonata')`, 'masa adisyonunda ürün')
+    expect(/50,00/.test(await waiter.ev(`document.querySelector('.wt-bill-summary').innerText`)), 'adisyon toplamı')
+    await waiter.go('/garson')
+    await waiter.until(`document.querySelector('.wt-table-card')`, 'masalar')
     return `#${orders.dine}`
   })
 
@@ -325,13 +381,58 @@ try {
     expect(!panel.includes('—  ') && !/^ — Siparişiniz/m.test(panel), 'masasız bildirim')
   })
 
-  await step('Yerleşim: müşteri ödeme adımı telefon, tablet ve masaüstünde taşmaz, düğme erişilebilir', async () => {
+  await step('Tüm katalog: her kategoride ürün görselleri /waypoint/ yolunda yüklenir, kırık görsel yok', async () => {
     await enterMenu(customer, '/')
     await customer.until(`document.querySelector('.qr-channel-chip')`, 'kanal düğmesi')
+    const chips = await customer.ev(`document.querySelectorAll('.story-item').length`)
+    expect(chips >= 8, `kategori sayısı ${chips}`)
+    let checked = 0
+    const broken = []
+    for (let index = 0; index < chips; index++) {
+      await customer.ev(`document.querySelectorAll('.story-item')[${index}].click()`)
+      await sleep(500)
+      await customer.ev(`(async()=>{for(const i of document.querySelectorAll('.editorial-card img')){i.loading='eager';if(!i.complete)await new Promise(r=>{i.onload=i.onerror=r;setTimeout(r,8000)})}})()`)
+      const images = await customer.ev(`[...document.querySelectorAll('.editorial-card img')].map(i=>({src:i.currentSrc||i.src,ok:i.complete&&i.naturalWidth>0}))`)
+      checked += images.length
+      broken.push(...images.filter(image => !image.ok).map(image => image.src))
+      expect(!images.some(image => image.src.includes(PRODUCTION_REF)), 'görsel üretimden yüklendi')
+    }
+    expect(!broken.length, `kırık görsel: ${broken.slice(0, 5).join(', ')}`)
+    expect(checked >= 50, `yalnızca ${checked} görsel denetlendi`)
+    // Fotoğrafı olmayan Oralet ürünleri grup olarak görünür; kapak yerel çözücüden gelir.
+    await customer.type('.menu-search', 'Oralet')
+    await customer.until(`${cardOf('Oralet')}?.querySelector('img')?.naturalWidth>0`, 'yerel görsel', 8000)
+    expect((await customer.ev(`${cardOf('Oralet')}.querySelector('img').src`)).includes('/waypoint/images/oralet.jpg'), 'yerel görsel taban yolu')
+    await customer.type('.menu-search', '')
+    return `${checked} görsel denetlendi`
+  })
+
+  await step('Kanallar kapalıyken salt menü: ürün açılır, sipariş ve Sepeti Gör yoktur', async () => {
+    const browse = await openPage()
+    await browse.size(390, 844)
+    browse.onPaused(params => browse.cdp('Fetch.failRequest', { requestId: params.requestId, errorReason: 'Failed' }))
+    await browse.cdp('Fetch.enable', { patterns: [{ urlPattern: '*get_ordering_config*' }] })
+    await enterMenu(browse, '/')
+    await browse.until(`document.querySelector('.editorial-card')`, 'ürünler')
+    await sleep(800)
+    expect(!await browse.ev(`!!document.querySelector('.qr-add,.qr-bar,.qr-channel-chip,.qr-sheet')`), 'salt menüde sipariş arayüzü')
+    await browse.click('.editorial-card')
+    await browse.until(`document.querySelector('.modal-sheet-footer-note')`, 'personel notu')
+    expect(!await browse.ev(`!!document.querySelector('.qr-continue,.qr-continue-channel,.qr-add-wide')`), 'salt menüde sepet düğmesi')
+    await browse.cdp('Fetch.disable')
+  })
+
+  await step('Yerleşim: ürün penceresi ve ödeme adımı telefon, tablet ve masaüstünde taşmaz, düğme erişilebilir', async () => {
     await addProduct(customer, 'Latte', 1)
-    for (const [width, height] of [[320, 640], [390, 844], [430, 932], [820, 1180], [1366, 900]]) {
+    for (const [width, height] of [[320, 568], [320, 640], [390, 844], [430, 932], [820, 1180], [1366, 900]]) {
       await customer.size(width, height); await sleep(250)
       expect(await customer.overflow() === 0, `${width}px menü taşması`)
+      await openProduct(customer, 'Latte')
+      await sleep(300)
+      await customer.shot(`product-${width}`)
+      await continueToCart(customer, /130,00/)
+      await customer.click('.qr-sheet-head .pos-icon-btn')
+      await customer.until(`!document.querySelector('.qr-sheet')`, 'kapandı')
       await customer.click('.qr-bar-cart')
       await customer.until(`document.querySelector('.qr-send')`, 'ödeme adımı')
       await sleep(350)
