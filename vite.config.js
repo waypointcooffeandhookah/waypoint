@@ -19,4 +19,9 @@ export default defineConfig({
     },
   ],
   base: '/waypoint/',
+  server: {
+    // --host ile açılan geliştirme sunucusu proje kökünü yerel ağa sunar. İlk dört kalıp Vite'ın
+    // varsayılanıdır; sonuncusu personel şifrelerini ve masa kodlarını ağdan okunmaktan korur.
+    fs: { deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/.staging-*'] },
+  },
 })

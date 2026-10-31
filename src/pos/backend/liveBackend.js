@@ -4,6 +4,7 @@ import { staffOrderTransport, updateOrderStatus } from '../posApi.js'
 import { statusResult } from '../orderStatus.js'
 import { mapKitchenOrder, SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
 import { randomUUID } from '../../utils/uuid.js'
+import { readBillSnapshot } from './billSnapshot.js'
 
 const mapOrder = order => ({
   id: order.id,
@@ -42,18 +43,26 @@ export function createLiveBackend(supabase) {
     },
 
     async getTableBill(tableId) {
-      const { data: bill, error } = await supabase.from('bill_summaries')
-        .select('bill_id, total_cents, paid_cents, balance_cents, order_count')
-        .eq('table_id', tableId).eq('status', 'open').maybeSingle()
-      if (error) throw error
-      if (!bill) return null
-      const orders = await supabase.from('orders')
-        .select('id, order_number, source, status, created_at, note, subtotal_cents, order_items(position, item_name, quantity, line_total_cents, note)')
-        .eq('bill_id', bill.bill_id).order('created_at')
-      if (orders.error) throw orders.error
+      const snapshot = await readBillSnapshot(
+        async () => {
+          const { data, error } = await supabase.from('bill_summaries')
+            .select('bill_id, subtotal_cents, total_cents, paid_cents, balance_cents, order_count')
+            .eq('table_id', tableId).eq('status', 'open').maybeSingle()
+          if (error) throw error
+          return data
+        },
+        async bill => {
+          const { data, error } = await supabase.from('orders')
+            .select('id, order_number, source, status, created_at, note, subtotal_cents, order_items(position, item_name, quantity, line_total_cents, note)')
+            .eq('bill_id', bill.bill_id).order('created_at')
+          if (error) throw error
+          return data
+        })
+      if (!snapshot) return null
+      const { summary: bill, orders } = snapshot
       return {
         billId: bill.bill_id, totalCents: Number(bill.total_cents), paidCents: Number(bill.paid_cents),
-        balanceCents: Number(bill.balance_cents), orderCount: bill.order_count, orders: orders.data.map(mapOrder),
+        balanceCents: Number(bill.balance_cents), orderCount: bill.order_count, orders: orders.map(mapOrder),
       }
     },
 

@@ -15,7 +15,7 @@ Testler: `npm test` (birim ve PGlite), `npm run dev` açıkken `npm run test:e2e
 Staging modu yalnızca `waypoint-pos-staging` projesine bağlanır. Ayar eksik veya hatalıysa uygulama açılmaz, üretime düşmez ve demo moduna geçmez.
 
 1. `.env.staging.example` dosyasını `.env.staging.local` olarak kopyalayıp anon anahtarı girin.
-2. Personel hesapları: `npm run staging:staff` (service_role anahtarı gizli olarak sorulur; şifreler git dışı `.staging-credentials.local` dosyasına yazılır).
+2. Personel hesapları: kendi terminalinizde `npm run staging:staff` (`sb_secret_` anahtarı gizli olarak sorulur ve kaydedilmez; şifreler git dışı `.staging-credentials.local` dosyasına yazılır, var olan hesaplar değiştirilmez).
 3. Başlatma: `npm run dev:staging` → `http://<bilgisayar-ip>:5173/waypoint/`
 4. Testler: `npm run test:staging` (API) ve `E2E_BASE=http://<bilgisayar-ip>:5173/waypoint npm run test:e2e:staging` (tarayıcı). QR kodları git dışı `.staging-qr.local` dosyasındadır.
 

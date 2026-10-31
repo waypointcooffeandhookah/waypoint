@@ -249,6 +249,50 @@ try {
       await waiter.until(`document.querySelector('.wt-send')`, 'gönder')
       await waiter.click('.wt-send')
       await waiter.until(`document.querySelectorAll('.wt-order').length===6`, 'altı sipariş')
+      await waiter.until(`document.querySelector('.wt-bill-summary strong')`, 'toplam')
+      const shown = await waiter.ev(`document.querySelector('.wt-bill-summary strong').innerText`)
+      const added = Number(shown.replace(/[^\d,]/g, '').replace(',', '.')) - 647.5
+      expect([87.5, 90, 100, 110, 130, 140, 150].includes(added), `toplam ${shown}, fark ${added}`)
+      return `${shown} (eklenen ${added} ₺)`
+    })
+    // Servis edilen fişler 2 saat görünür kalır; yalnızca bu çalıştırmanın açık fişi seçilir.
+    const waiterTicket = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter:not(.kt-ticket-served)')].find(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5'&&t.offsetParent)`
+    const waiterOrder = `[...document.querySelectorAll('.wt-order')].find(o=>/garson/i.test(o.querySelector('.pos-source')?.innerText??''))`
+    await step('Garson siparişi: mutfak ekranına yenilemeden ulaşır', async () => {
+      await kitchen.until(waiterTicket, 'garson fişi', 10000)
+    })
+    await step('Mutfak Hazırlanıyor → Hazır; garson ekranı yenilemeden güncellenir', async () => {
+      await kitchen.ev(`${waiterTicket}.querySelector('.kt-action').click()`)
+      await kitchen.until(`${waiterTicket}.classList.contains('kt-ticket-preparing')`, 'mutfakta hazırlanıyor')
+      await waiter.until(`${waiterOrder}.querySelector('.pos-status-preparing')`, 'garsonda hazırlanıyor', 10000)
+      await kitchen.ev(`${waiterTicket}.querySelector('.kt-action').click()`)
+      await kitchen.until(`${waiterTicket}.classList.contains('kt-ticket-ready')`, 'mutfakta hazır')
+      await waiter.until(`${waiterOrder}.querySelector('.pos-status-ready')`, 'garsonda hazır', 10000)
+    })
+    await step('Yenileme: oturum korunur, kayıtlar veritabanından gelir', async () => {
+      await waiter.go('/garson')
+      await waiter.until(`document.querySelectorAll('.wt-table-card').length===10`, 'girişsiz masa listesi')
+      await kitchen.go('/mutfak')
+      await kitchen.until(waiterTicket, 'yenileyince garson fişi')
+    })
+    await step('Yeniden bağlanma: mutfak koparken gelen sipariş bağlanınca yenilemeden görünür', async () => {
+      await sleep(2500)
+      const before = await kitchen.ev(`document.querySelectorAll('.kt-ticket').length`)
+      await kitchen.cdp('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 })
+      await sleep(1500)
+      await customer.click('.qr-sheet-head .pos-icon-btn')
+      await customer.until(`!document.querySelector('.qr-sheet')`, 'sayfa kapandı')
+      await addProduct(customer, 'Ice Latte')
+      await openCart(customer)
+      await customer.click('.qr-send')
+      await customer.until(`document.querySelector('.qr-confirm')`, 'onay')
+      await sleep(3000)
+      const whileOffline = await kitchen.ev(`document.querySelectorAll('.kt-ticket').length`)
+      expect(whileOffline === before, 'çevrimdışıyken fiş geldi: bağlantı gerçekten kopmadı')
+      const started = Date.now()
+      await kitchen.cdp('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+      await kitchen.until(`document.querySelectorAll('.kt-ticket').length===${before + 1}`, 'bağlanınca yeni fiş', 30000)
+      return `${((Date.now() - started) / 1000).toFixed(1)} sn içinde görüldü`
     })
   }
 

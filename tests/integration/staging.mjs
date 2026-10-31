@@ -151,6 +151,8 @@ await step('Hız sınırı: masa başına 5 dakikada en fazla 12 QR sipariş', a
   throw new Error('sınır uygulanmadı')
 })
 
+// Supabase yetkisiz aboneye yalnızca içeriksiz "401" bildirimi gönderir: olayın türü ve zamanı görünür,
+// satır verisi görünmez. Test etkin abonelikle çalışır ve veri sızıntısında kalır.
 await step('Realtime: anonim abone sipariş verisi almaz', async () => {
   const listener = client(), events = []
   let status
@@ -159,10 +161,17 @@ await step('Realtime: anonim abone sipariş verisi almaz', async () => {
     .subscribe(next => { status = next })
   for (let i = 0; i < 40 && status !== 'SUBSCRIBED'; i++) await sleep(250)
   expect(status === 'SUBSCRIBED', `abonelik: ${status}`)
-  await place('Masa 7', [line(COFFEE, 1)])
-  await sleep(4000)
+  await sleep(2000)
+  const { data } = await place('Masa 7', [line(COFFEE, 1)])
+  await sleep(5000)
   await listener.removeChannel(channel)
-  expect(events.length === 0, `${events.length} olay sızdı`)
+  for (const event of events) {
+    expect(Object.keys(event.new ?? {}).length === 0 && Object.keys(event.old ?? {}).length === 0, 'satır verisi sızdı')
+    expect(event.errors?.some(error => /401/.test(error)), 'yetkisiz olay 401 taşımıyor')
+    const raw = JSON.stringify(event)
+    expect(!raw.includes(data.order_id) && !raw.includes(NOTE), 'sipariş bilgisi sızdı')
+  }
+  return `${events.length} içeriksiz bildirim (yalnızca olay türü ve zamanı)`
 })
 
 if (!creds) {
@@ -219,6 +228,48 @@ if (!creds) {
     expect(!log.error && log.data.length === 0, 'garson denetim kaydı gördü')
   })
 
+  await step('Giriş: yanlış şifre reddedilir', async () => {
+    const { error } = await client().auth.signInWithPassword({ email: creds.waiter.email, password: `${randomUUID()}-yanlis` })
+    expect(error, 'yanlış şifre kabul edildi')
+  })
+
+  await step('Token: imzası bozuk ve yetkisi değiştirilmiş token reddedilir', async () => {
+    const { data: { session } } = await waiter.auth.getSession()
+    const [head, body, signature] = session.access_token.split('.')
+    const claims = JSON.parse(Buffer.from(body, 'base64url').toString())
+    claims.app_metadata = { ...claims.app_metadata, role: 'admin' }
+    const forged = `${head}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.${signature}`
+    const fake = createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${forged}` } } })
+    const read = await fake.from('audit_log').select('id').limit(1)
+    expect(read.error && !read.data?.length, 'sahte yönetici tokenı kabul edildi')
+    const rotate = await fake.rpc('rotate_table_qr_token', { p_table_id: table5 })
+    expect(rotate.error, 'sahte tokenla QR yenilendi')
+  })
+
+  await step('Yönetici: QR kodları, tüm personel ve menü yazma yetkisi çalışır', async () => {
+    const qr = await admin.from('table_qr_tokens').select('table_id')
+    expect(!qr.error && qr.data.length >= 10, `QR: ${qr.error?.message ?? qr.data.length}`)
+    const profiles = await admin.from('staff_profiles').select('role')
+    expect(!profiles.error && profiles.data.length === 3, 'personel listesi')
+    const latte = (await admin.from('menu_items').select('id, price').eq('name', 'Latte').single()).data
+    const same = await admin.from('menu_items').update({ price: latte.price }).eq('id', latte.id).select('id')
+    expect(!same.error && same.data.length === 1, 'yönetici menü güncelleyemedi')
+  })
+
+  await step('Yetki: garson ve mutfak menüyü değiştiremez, yalnızca kendi profilini görür', async () => {
+    const latte = (await waiter.from('menu_items').select('id, price').eq('name', 'Latte').single()).data
+    for (const db of [waiter, kitchen]) {
+      const change = await db.from('menu_items').update({ price: 1 }).eq('id', latte.id).select('id')
+      expect(!change.error && change.data.length === 0, 'menü fiyatı değiştirildi')
+      const remove = await db.from('menu_items').delete().eq('id', latte.id).select('id')
+      expect(!remove.error && remove.data.length === 0, 'menü ürünü silindi')
+      const profiles = await db.from('staff_profiles').select('role')
+      expect(!profiles.error && profiles.data.length === 1, `${profiles.data?.length} profil görüldü`)
+      expect((await db.from('staff_profiles').update({ role: 'admin' }).neq('role', 'admin').select('role')).error, 'rol yükseltildi')
+    }
+    expect(Number((await anon.from('menu_items').select('price').eq('id', latte.id).single()).data.price) === Number(latte.price), 'fiyat değişti')
+  })
+
   await step('Realtime: mutfak ve garson yeni siparişi yenilemeden alır (RLS ile)', async () => {
     kitchenChannel = await listen(kitchen, kitchenEvents)
     waiterChannel = await listen(waiter, waiterEvents)
@@ -253,6 +304,21 @@ if (!creds) {
     expect(!error, error?.message)
     expect(data.source === 'waiter', data.source)
     scenario.fourth = data
+  })
+
+  await step('Garson siparişi: mutfağa ulaşır, Hazırlanıyor → Hazır, garson olayla görür', async () => {
+    const id = scenario.fourth.order_id
+    await until(() => kitchenEvents.some(e => e.new?.id === id), 'mutfak olayı')
+    const seen = await kitchen.from('orders').select('source, status, order_items(item_name, quantity)').eq('id', id).single()
+    expect(!seen.error && seen.data.source === 'waiter' && seen.data.order_items[0].item_name === 'Türk Kahvesi', 'mutfak siparişi okuyamadı')
+    for (const status of ['preparing', 'ready']) {
+      const { data, error } = await kitchen.rpc('update_order_status', { p_order_id: id, p_status: status })
+      expect(!error && data.status === status, error?.message)
+      await until(() => waiterEvents.some(e => e.new?.id === id && e.new?.status === status), `garsonda ${status}`)
+    }
+    const history = await waiter.from('order_status_history').select('to_status, changed_by').eq('order_id', id).order('id')
+    expect(history.data.map(h => h.to_status).join('>') === 'new>preparing>ready', 'durum geçmişi')
+    expect(history.data.slice(1).every(h => h.changed_by), 'değiştiren kişi kaydedilmedi')
   })
 
   let bill
@@ -296,6 +362,12 @@ if (!creds) {
   await step('Yönetici: denetim kaydını okur; zorla kapatma yalnızca yöneticiye açık', async () => {
     const log = await admin.from('audit_log').select('action').limit(5)
     expect(!log.error && log.data.length > 0, 'denetim kaydı boş')
+    // Rol, oturum aranmadan önce denetlenir: yetkisiz çağrı "forbidden", yönetici "session_not_found" alır.
+    const missing = randomUUID()
+    denied(await waiter.rpc('close_table_session', { p_session_id: missing, p_force: true }), 'garson zorla kapatma')
+    denied(await kitchen.rpc('close_table_session', { p_session_id: missing }), 'mutfak masa kapatma')
+    const adminForce = await admin.rpc('close_table_session', { p_session_id: missing, p_force: true })
+    expect(/session_not_found/.test(adminForce.error?.message), 'yönetici zorla kapatma yetkisi')
   })
 
   await step('Yeniden bağlanma: Realtime kopup bağlanınca olay yeniden gelir', async () => {

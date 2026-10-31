@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Receipt, ShoppingBag, UtensilsCrossed } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -28,16 +28,20 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
   const [rejectCode, setRejectCode] = useState(null)
   const dispatch = useCallback(action => dispatchCart({ tableId, action }), [dispatchCart, tableId])
 
+  const latestLoad = useRef(0)
   const loadBill = useCallback(async () => {
+    const load = ++latestLoad.current
     try {
       const [tables, nextBill] = await Promise.all([backend.listTables(), backend.getTableBill(tableId)])
+      // Çakışan yenilemelerde geç gelen eski yanıt yeni adisyonu ezmez.
+      if (load !== latestLoad.current) return
       const found = tables.find(t => t.id === tableId)
       if (!found) return navigate('..', { replace: true })
       setTable(found)
       setBill(nextBill)
       setBillError(false)
     } catch {
-      setBillError(true)
+      if (load === latestLoad.current) setBillError(true)
     }
   }, [backend, tableId, navigate])
 
