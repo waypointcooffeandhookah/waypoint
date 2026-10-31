@@ -1,8 +1,8 @@
 import { memo } from 'react'
-import { Check, ChefHat, Clock, HandPlatter, LoaderCircle, QrCode, UserRound } from 'lucide-react'
+import { Bike, Check, ChefHat, Clock, HandPlatter, LoaderCircle, QrCode, ShoppingBag, UserRound } from 'lucide-react'
 import { SOURCE_LABELS, STATUS_LABELS, formatClock, formatElapsed } from '../messages'
 import { NEXT_STATUS } from '../orderStatus'
-import { isLate } from './kitchenOrders'
+import { isLate, isOnlineOrder } from './kitchenOrders'
 
 const ACTIONS = {
   new: { label: 'Hazırlamaya başla', Icon: ChefHat },
@@ -11,17 +11,27 @@ const ACTIONS = {
 }
 
 function OrderTicket({ order, now, busy, onAdvance }) {
-  const action = ACTIONS[order.status]
+  const online = isOnlineOrder(order)
+  // Paket ve kuryede son adım mutfağın değil, teslimat ekranındaki personelindir.
+  const action = online && order.status === 'ready' ? null : ACTIONS[order.status]
   const late = isLate(order, now)
+  const fulfillment = order.fulfillmentType ?? 'dine_in'
 
   return (
-    <li className={`kt-ticket kt-ticket-${order.status} kt-from-${order.source}${late ? ' late' : ''}`}>
+    <li className={`kt-ticket kt-ticket-${order.status} kt-from-${order.source} kt-type-${fulfillment}${late ? ' late' : ''}`}>
       <div className="kt-ticket-head">
         <h3 className="kt-ticket-table">{order.tableLabel}</h3>
-        <span className={`pos-source pos-source-${order.source}`}>
-          {order.source === 'qr' ? <QrCode size={13} aria-hidden="true" /> : <UserRound size={13} aria-hidden="true" />}
-          {SOURCE_LABELS[order.source]}
-        </span>
+        {online ? (
+          <span className="pos-source kt-source-online">
+            {fulfillment === 'pickup' ? <ShoppingBag size={13} aria-hidden="true" /> : <Bike size={13} aria-hidden="true" />}
+            Online
+          </span>
+        ) : (
+          <span className={`pos-source pos-source-${order.source}`}>
+            {order.source === 'qr' ? <QrCode size={13} aria-hidden="true" /> : <UserRound size={13} aria-hidden="true" />}
+            {SOURCE_LABELS[order.source]}
+          </span>
+        )}
       </div>
       <div className="kt-ticket-meta">
         <span className="kt-ticket-number">#{order.orderNumber}</span>
@@ -39,6 +49,7 @@ function OrderTicket({ order, now, busy, onAdvance }) {
         ))}
       </ul>
       {order.note && <p className="kt-order-note">Not: {order.note}</p>}
+      {online && order.status === 'ready' && <p className="kt-handoff-note">{fulfillment === 'pickup' ? 'Müşteriye teslim bekliyor' : 'Kuryeye teslim bekliyor'}</p>}
 
       {action && (
         <button type="button" className={`pos-btn kt-action kt-action-${order.status}`} disabled={busy} onClick={() => onAdvance(order, NEXT_STATUS[order.status])}>

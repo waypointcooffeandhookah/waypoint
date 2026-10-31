@@ -1,5 +1,6 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { FlaskConical, MapPin } from 'lucide-react'
+import { useOrderingConfig } from './useOnlineOrdering'
 import MenuPage from '../../pages/MenuPage'
 import { useQrOrdering } from './useQrOrdering'
 import QrOrderLayer from './QrOrderLayer'
@@ -17,6 +18,7 @@ export default function QrOrderRoute() {
   const { tableToken } = useParams()
   const ordering = useQrOrdering(tableToken)
   const ready = ordering.status === 'ready'
+  const onlineChannels = useOrderingConfig()
 
   const chip = ready && <span className="qr-table-chip"><MapPin size={13} aria-hidden="true" />{ordering.tableLabel}</span>
   const banner = (
@@ -28,6 +30,7 @@ export default function QrOrderRoute() {
         </div>
       )}
       {NOTICES[ordering.status] && <div className="qr-banner" role="status">{NOTICES[ordering.status]}</div>}
+      {ready && !ordering.demo && onlineChannels && <Link className="qr-other-channels" to="/">Paket veya kurye siparişi için genel menü</Link>}
     </>
   )
 

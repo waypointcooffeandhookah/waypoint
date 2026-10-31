@@ -13,6 +13,12 @@ const ORDER_ERRORS = {
   forbidden: 'Bu işlem için yetkiniz yok. Yeniden giriş yapın.',
   rate_limited: 'Çok sık sipariş gönderildi, biraz sonra tekrar deneyin.',
   idempotency_key_conflict: 'Gönderim çakıştı. Sepeti kontrol edip yeniden gönderin.',
+  channel_closed: 'Bu sipariş türü şu anda kapalı. Başka bir seçenek deneyin.',
+  out_of_area: 'Bu adres teslimat bölgemizin dışında.',
+  below_minimum: 'Sepet tutarı bu bölgenin asgari sipariş tutarının altında.',
+  invalid_name: 'Adınızı ve soyadınızı kontrol edin.',
+  invalid_phone: 'Telefon numaranızı kontrol edin.',
+  invalid_address: 'Adres bilgilerinizi kontrol edin.',
 }
 
 export const orderErrorMessage = code => ORDER_ERRORS[code] ?? 'Sipariş kabul edilmedi. Lütfen tekrar deneyin.'
@@ -22,6 +28,8 @@ const STATUS_ERRORS = {
   order_not_found: 'Sipariş bulunamadı. Liste yenilendi.',
   bill_closed: 'Bu masanın adisyonu kapatılmış.',
   forbidden: 'Bu işlem için yetkiniz yok.',
+  courier_required: 'Önce kurye adını girin.',
+  reason_required: 'İptal nedeni gerekli.',
 }
 
 export const statusErrorMessage = code => STATUS_ERRORS[code] ?? 'Durum güncellenemedi. Bağlantınızı kontrol edip tekrar deneyin.'

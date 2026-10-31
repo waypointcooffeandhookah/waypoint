@@ -1,6 +1,7 @@
 // Canlı veri kaynağı: Milestone 1 migration'ı uygulanmış Supabase.
 import { submitOrder, reconcileOrder } from '../orderSubmission.js'
-import { staffOrderTransport, updateOrderStatus } from '../posApi.js'
+import { assignOrderCourier, recordFulfillmentPayment, staffOrderTransport, updateFulfillmentStatus, updateOrderStatus } from '../posApi.js'
+import { FULFILLMENT_LIMIT, FULFILLMENT_SELECT, FULFILLMENT_WINDOW_MS, mapFulfillmentRow } from '../fulfillment/fulfillmentOrders.js'
 import { statusResult } from '../orderStatus.js'
 import { mapKitchenOrder, SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
 import { randomUUID } from '../../utils/uuid.js'
@@ -74,7 +75,7 @@ export function createLiveBackend(supabase) {
     async listKitchenOrders() {
       const since = new Date(Date.now() - SERVED_WINDOW_MS).toISOString()
       const { data, error } = await supabase.from('orders')
-        .select('id, order_number, source, status, created_at, updated_at, note, table_id, restaurant_tables(label), order_items(position, item_name, quantity, note)')
+        .select('id, order_number, source, fulfillment_type, status, created_at, updated_at, note, table_id, restaurant_tables(label), order_items(position, item_name, quantity, note)')
         .or(`status.in.(new,preparing,ready),and(status.eq.served,updated_at.gte.${since})`)
         .order('created_at').limit(200)
       if (error) throw error
@@ -86,11 +87,24 @@ export function createLiveBackend(supabase) {
       const since = new Date(Date.now() - HISTORY_WINDOW_MS).toISOString()
       const { data, error } = await supabase.from('order_status_history')
         .select(READY_NOTIFICATION_SELECT)
-        .eq('to_status', 'ready').gte('changed_at', since)
+        .eq('to_status', 'ready').gte('changed_at', since).eq('orders.fulfillment_type', 'dine_in')
         .order('id', { ascending: false }).limit(HISTORY_LIMIT)
       if (error) throw error
       return data.map(mapNotificationRow)
     },
+
+    // Müşteri bilgileri yalnızca kasiyer, müdür ve yönetici için döner (RLS).
+    async listFulfillmentOrders() {
+      const since = new Date(Date.now() - FULFILLMENT_WINDOW_MS).toISOString()
+      const { data, error } = await supabase.from('order_fulfillments')
+        .select(FULFILLMENT_SELECT).gte('created_at', since).order('created_at', { ascending: false }).limit(FULFILLMENT_LIMIT)
+      if (error) throw error
+      return data.map(mapFulfillmentRow)
+    },
+    setFulfillmentStatus: async (orderId, status, courierName) => statusResult(await updateFulfillmentStatus(orderId, status, courierName)),
+    assignCourier: async (orderId, courierName) => statusResult(await assignOrderCourier(orderId, courierName)),
+    recordPayment: async (orderId, method) => statusResult(await recordFulfillmentPayment(orderId, method)),
+    cancelOrder: async (orderId, reason) => statusResult(await updateOrderStatus(orderId, 'cancelled', reason)),
 
     async setOrderStatus(orderId, status) {
       try {

@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useOrderSync } from '../useOrderSync'
-import { findNewArrivals } from '../kitchen/kitchenOrders'
+import { findNewArrivals, isOnlineOrder } from '../kitchen/kitchenOrders'
 
 const REFRESH_MS = 15000
 
@@ -11,7 +11,8 @@ export default function QrOrderNotifier({ backend }) {
   const load = useCallback(async () => {
     try {
       const orders = await backend.listKitchenOrders()
-      const arrivals = findNewArrivals(known.current, orders).filter(order => order.source === 'qr')
+      // Paket ve kurye garsonu ilgilendirmez; teslimat ekranı ve mutfak görür.
+      const arrivals = findNewArrivals(known.current, orders).filter(order => order.source === 'qr' && !isOnlineOrder(order))
       known.current = new Set(orders.map(order => order.id))
       for (const order of arrivals) toast(`Yeni QR sipariş · ${order.tableLabel}`, { icon: '🔔' })
     } catch { /* Masa ekranları bağlantı hatasını zaten gösterir. */ }

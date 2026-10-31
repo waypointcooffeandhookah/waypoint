@@ -1,0 +1,49 @@
+/* Paket ve kurye yönetim ekranı: garson ve mutfak ekranlarıyla aynı kart dili. */
+.ff-page { max-width: 1500px; margin: 0 auto; padding: 16px; }
+.ff-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ff-tabs { margin-bottom: 12px; overflow-x: auto; flex-wrap: nowrap; }
+.ff-tabs .pos-chip { white-space: nowrap; }
+.ff-board { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.ff-column { display: none; min-width: 0; }
+.ff-column.active { display: block; }
+.ff-column h2 { display: none; }
+.ff-column ul { display: flex; flex-direction: column; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.ff-empty { padding: 24px 0; text-align: center; }
+.ff-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: var(--pos-card); border: 1px solid rgba(255, 255, 255, 0.09); overflow-wrap: anywhere; }
+.ff-type-delivery { border-color: rgba(245, 208, 122, 0.4); }
+.ff-type-pickup { border-color: var(--pos-teal-line); }
+.ff-status-cancelled { opacity: 0.65; }
+.ff-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ff-type { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; color: var(--pos-teal); }
+.ff-type-delivery .ff-type { color: #f5d07a; }
+.ff-number { font-weight: 800; color: #f8f6f2; }
+.ff-card-head time { margin-left: auto; font-size: 0.76rem; color: var(--text-muted); }
+.ff-statuses { display: flex; flex-wrap: wrap; gap: 6px; }
+.ff-fulfillment { padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 700; color: var(--cream-gold); border: 1px solid rgba(255, 255, 255, 0.14); }
+.ff-items { font-size: 0.88rem; color: #f8f6f2; gap: 3px !important; }
+.ff-items em { color: var(--text-muted); font-size: 0.78rem; }
+.ff-note { margin: 0; font-size: 0.8rem; color: #fde7b0; }
+.ff-customer { display: flex; flex-direction: column; gap: 3px; padding-top: 8px; font-size: 0.84rem; color: var(--cream-gold); border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.ff-customer a { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; min-height: 32px; color: var(--pos-teal); }
+.ff-address { display: flex; flex-direction: column; font-style: normal; color: var(--text-secondary); font-size: 0.8rem; }
+.ff-address em { color: #fde7b0; }
+.ff-totals { margin: 0; font-size: 0.8rem; color: var(--text-secondary); }
+.ff-totals div { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.ff-totals dd { margin: 0; }
+.ff-totals .total { font-weight: 800; color: #f8f6f2; font-size: 0.92rem; }
+.ff-pay-unpaid { color: #fde7b0; }
+.ff-pay-paid { color: var(--pos-teal); }
+.ff-actions, .ff-pay-actions { display: flex; flex-direction: column; gap: 8px; }
+.ff-pay-actions { flex-direction: row; flex-wrap: wrap; }
+.ff-pay-actions .pos-btn { flex: 1 1 120px; }
+.ff-courier { display: flex; gap: 8px; }
+.ff-courier .input { flex: 1; min-width: 0; }
+.ff-next { width: 100%; min-height: 48px; }
+.ff-cancel { align-self: flex-start; min-height: var(--pos-touch); padding: 0 4px; border: none; background: none; color: #f2a59b; font-size: 0.78rem; text-decoration: underline; }
+
+@media (min-width: 1100px) {
+  .ff-tabs { display: none; }
+  .ff-board { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; }
+  .ff-column { display: block; }
+  .ff-column h2 { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 0.86rem; color: var(--cream-gold); }
+}

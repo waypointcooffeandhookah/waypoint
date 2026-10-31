@@ -228,5 +228,5 @@ test('canlı eşleme: satır sırası korunur, sunucu hataları doğru sınıfla
 
 test('rotalar: QR menü, yönetici, garson ve mutfak birlikte tanımlı', () => {
   const app = readFileSync(new URL('../../src/App.jsx', import.meta.url), 'utf8')
-  for (const route of ['path="/" element={<MenuPage />}', 'path="/admin/login"', 'path="/admin"', 'path="/garson/*"', 'path="/mutfak"']) assert.ok(app.includes(route), route)
+  for (const route of ['path="/" element={<GeneralMenuRoute />}', 'path="/admin/login"', 'path="/admin"', 'path="/garson/*"', 'path="/mutfak"']) assert.ok(app.includes(route), route)
 })

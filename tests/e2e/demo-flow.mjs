@@ -74,7 +74,7 @@ async function step(name, fn) {
   catch (error) { failed++; results.push(`FAIL  ${name} -> ${error.message.split('\n')[0]}`) }
 }
 const expect = (ok, message) => { if (!ok) throw new Error(message) }
-const ticketOf = table => `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').innerText===${JSON.stringify(table)}&&t.offsetParent)`
+const ticketOf = table => `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').textContent===${JSON.stringify(table)}&&t.offsetParent)`
 
 try {
   for (let i = 0; i < 40; i++) { if (await fetch(`http://127.0.0.1:${PORT}/json/version`).then(r => r.ok).catch(() => false)) break; await sleep(250) }
@@ -157,7 +157,7 @@ try {
     await waiter.until(`document.querySelectorAll('.wt-order').length===2`, 'iki sipariş')
     const shown = await waiter.ev(`document.querySelector('.wt-bill-summary strong').innerText`)
     expect(shown !== total, `toplam değişmedi: ${shown}`)
-    await kitchen.until(`[...document.querySelectorAll('.kt-ticket')].filter(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5').length===2`, 'mutfakta iki fiş', 5000)
+    await kitchen.until(`[...document.querySelectorAll('.kt-ticket')].filter(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5').length===2`, 'mutfakta iki fiş', 5000)
     return `yeni toplam ${shown}`
   })
   await step('Yerleşim: mutfak telefon ve tablette taşmaz, sekmeler çalışır', async () => {
@@ -287,7 +287,7 @@ try {
     const t = await kitchen.ev(`${ticketOf('Masa 5')}.innerText`)
     expect(/QR/.test(t) && t.includes('2×') && t.includes('qr notu'), `fiş: ${t}`)
     expect(await kitchen.ev(`${ticketOf('Masa 5')}.classList.contains('kt-from-qr')`), 'QR şeridi')
-    expect(await kitchen.ev(`[...document.querySelectorAll('.kt-ticket')].filter(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5').length`) === 1, 'çift sipariş')
+    expect(await kitchen.ev(`[...document.querySelectorAll('.kt-ticket')].filter(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5').length`) === 1, 'çift sipariş')
   })
   await step('Mutfak durumu değiştirir, müşteri otomatik görür', async () => {
     await customer.clickText('Siparişlerim', '.qr-confirm button')

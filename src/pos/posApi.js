@@ -27,6 +27,23 @@ export const staffOrderTransport = {
   lookup: ({ key }, signal) => call('get_order_by_idempotency_key', { p_idempotency_key: key }, signal),
 }
 
+// Paket ve kurye: ücret ve toplam gönderilmez. Sunucuda aynı anahtar aynı siparişi döndürür,
+// bu yüzden doğrulama "kayıt yok" der ve aynı anahtarla yeniden göndermek güvenlidir.
+export const onlineOrderTransport = {
+  send: ({ key, payload }, signal) => call('place_online_order', {
+    p_fulfillment_type: payload.fulfillmentType, p_idempotency_key: key, p_items: toLines(payload.lines),
+    p_customer: payload.customer, p_address: payload.address, p_note: payload.note || null,
+  }, signal),
+  lookup: async () => ({ data: null, error: null }),
+}
+
+export const getOrderingConfig = () => call('get_ordering_config', {})
+export const checkDeliveryAddress = (postalCode, district) => call('check_delivery_address', { p_postal_code: postalCode, p_district: district })
+export const getOrderTracking = token => call('get_order_tracking', { p_tracking_token: token })
+export const updateFulfillmentStatus = (orderId, status, courierName) => call('update_fulfillment_status', { p_order_id: orderId, p_status: status, p_courier_name: courierName || null })
+export const assignOrderCourier = (orderId, courierName) => call('assign_order_courier', { p_order_id: orderId, p_courier_name: courierName })
+export const recordFulfillmentPayment = (orderId, method) => call('record_fulfillment_payment', { p_order_id: orderId, p_method: method })
+
 export const getQrTable = tableToken => call('get_qr_table', { p_table_token: tableToken })
 export const getQrOrders = (tableToken, keys) => call('get_qr_orders', { p_table_token: tableToken, p_idempotency_keys: keys })
 export const openTableSession = tableId => call('open_table_session', { p_table_id: tableId })

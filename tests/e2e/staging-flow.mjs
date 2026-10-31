@@ -197,7 +197,7 @@ try {
       await page.type('#staff-password', password)
       await page.click('.login-btn')
     }
-    const ticket = `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5'&&t.innerText.includes('Türk Kahvesi')&&t.offsetParent)`
+    const ticket = `[...document.querySelectorAll('.kt-ticket')].find(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5'&&t.innerText.includes('Türk Kahvesi')&&t.offsetParent)`
 
     await step('Yetki: mutfak hesabı garson paneline giremez', async () => {
       await login(waiter, '/garson', creds.kitchen)
@@ -256,7 +256,7 @@ try {
       return `${shown} (eklenen ${added} ₺)`
     })
     // Servis edilen fişler 2 saat görünür kalır; yalnızca bu çalıştırmanın açık fişi seçilir.
-    const waiterTicket = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter:not(.kt-ticket-served)')].find(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5'&&t.offsetParent)`
+    const waiterTicket = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter:not(.kt-ticket-served)')].find(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5'&&t.offsetParent)`
     const waiterOrder = `[...document.querySelectorAll('.wt-order')].find(o=>/garson/i.test(o.querySelector('.pos-source')?.innerText??''))`
     await step('Garson siparişi: mutfak ekranına yenilemeden ulaşır', async () => {
       await kitchen.until(waiterTicket, 'garson fişi', 10000)
@@ -305,9 +305,9 @@ try {
     const bannerCount = page => page.ev(`document.querySelectorAll('.wt-notify-banner').length`)
     const openPanel = async page => { await page.click('.wt-bell'); await page.until(`document.querySelector('.wt-notify-panel')`, 'bildirim paneli') }
     const closePanel = async page => { await page.click('.wt-notify-close'); await page.until(`!document.querySelector('.wt-notify-panel')`, 'panel kapandı') }
-    const newWaiterTicket = status => `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].find(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5')`
+    const newWaiterTicket = status => `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].find(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5')`
     const advance = async (status, waitFor = 1) => {
-      const count = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].filter(t=>t.querySelector('.kt-ticket-table').innerText==='Masa 5').length`
+      const count = `[...document.querySelectorAll('.kt-ticket.kt-from-waiter.kt-ticket-${status}')].filter(t=>t.querySelector('.kt-ticket-table').textContent==='Masa 5').length`
       // Beklenen fişlerin hepsi gelmeden sayılırsa sonradan gelen fiş sayımı bozar.
       await kitchen.until(`${count}>=${waitFor}`, `mutfakta ${waitFor} ${status} fiş`, 12000)
       const before = await kitchen.ev(count)

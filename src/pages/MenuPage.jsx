@@ -204,7 +204,7 @@ function groupCatalog(allItems) {
   return result
 }
 
-// ordering ve yuvaları yalnızca /masa/ adresinden gelir; normal menüde hiçbiri kullanılmaz.
+// ordering ve yuvaları masa QR'ından veya açık paket/kurye kanalından gelir; yoksa salt menüdür.
 export default function MenuPage({ ordering = null, tableChip = null, orderBanner = null, orderLayer = null }) {
   const [promotionId, setPromotionId] = useState(null)
   const [promotionDismissed, setPromotionDismissed] = useState(false)

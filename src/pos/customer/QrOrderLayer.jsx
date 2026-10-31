@@ -6,7 +6,7 @@ import { formatClock, orderErrorMessage } from '../messages'
 import { MAX_QUANTITY } from '../cart'
 import { CUSTOMER_STATUS, STATUS_STEPS } from './qrOrders'
 
-function CartLine({ line, locked, dispatch }) {
+export function CartLine({ line, locked, dispatch }) {
   const [editing, setEditing] = useState(Boolean(line.note))
   const setQuantity = quantity => dispatch({ type: 'setQuantity', lineId: line.lineId, quantity })
 

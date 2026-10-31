@@ -19,8 +19,13 @@ export function findNewArrivals(knownIds, orders) {
 
 export const isLate = (order, now = Date.now()) => order.status !== 'served' && now - order.createdAt >= LATE_MINUTES * 60000
 
+export const FULFILLMENT_LABELS = { pickup: 'PAKET / GEL AL', delivery: 'KURYE / TESLİMAT' }
+export const isOnlineOrder = order => order.fulfillmentType === 'pickup' || order.fulfillmentType === 'delivery'
+
+// Mutfak yalnızca hazırlık bilgisini görür: müşteri adı, telefon ve adres burada yoktur.
 export function mapKitchenOrder(row) {
   return {
+    fulfillmentType: row.fulfillment_type ?? 'dine_in',
     id: row.id,
     orderNumber: row.order_number,
     source: row.source,
@@ -29,7 +34,7 @@ export function mapKitchenOrder(row) {
     updatedAt: Date.parse(row.updated_at),
     note: row.note,
     tableId: row.table_id,
-    tableLabel: row.restaurant_tables?.label ?? '—',
+    tableLabel: FULFILLMENT_LABELS[row.fulfillment_type] ?? row.restaurant_tables?.label ?? '—',
     items: [...(row.order_items ?? [])]
       .sort((a, b) => a.position - b.position)
       .map(item => ({ name: item.item_name, quantity: item.quantity, note: item.note })),

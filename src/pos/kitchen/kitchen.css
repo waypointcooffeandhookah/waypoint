@@ -134,3 +134,10 @@
   .kt-column-count { font: 800 1rem 'Outfit', sans-serif; color: var(--text-secondary); }
   .kt-tickets { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Sipariş türü: masa dışındaki fişler uzaktan ayırt edilir. */
+.kt-ticket-table { text-transform: uppercase; }
+.kt-type-pickup .kt-ticket-table { color: var(--pos-teal); font-size: 1.02rem; }
+.kt-type-delivery .kt-ticket-table { color: #f5d07a; font-size: 1.02rem; }
+.kt-source-online { color: var(--cream-gold); border: 1px solid rgba(255, 255, 255, 0.16); }
+.kt-handoff-note { margin: 8px 0 0; font-size: 0.8rem; font-weight: 700; color: var(--cream-gold); }

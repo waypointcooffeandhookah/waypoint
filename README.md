@@ -21,6 +21,8 @@ Staging modu yalnızca `waypoint-pos-staging` projesine bağlanır. Ayar eksik v
 
 Garson bildirimleri `order_status_history` kayıtlarından okunur; panel açıkken çalışır ve bağlanınca kaçırılanları tamamlar. Okundu bilgisi cihaza özeldir. Arka plan push bildirimi yoktur: HTTPS, service worker ve Web Push gerektirir.
 
+Paket ve kurye: genel menü kanal seçimini sunar (`fulfillment_settings` açıksa; varsayılan kapalıdır, bölge ve ücretler `delivery_zones` tablosundadır). Teslimat yönetimi `/waypoint/siparisler` (kasiyer, müdür, yönetici), müşteri takibi `/waypoint/siparis/<kod>`. Testler: `npm run test:multichannel` ve `npm run test:e2e:multichannel`.
+
 `supabase/staging/` yalnızca staging içindir, üretimde çalıştırılmaz. Test siparişlerini silmeden kapatmak için `03_close_test_orders.sql` kullanılır.
 
 # React + Vite
