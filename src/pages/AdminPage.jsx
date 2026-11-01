@@ -14,7 +14,8 @@ import SocialSettings from './SocialSettings'
    © 2024 Mehmet Ali ERDOĞAN
    ================================================================ */
 
-export default function AdminPage() {
+// embedded: yönetim merkezinin Menü bölümü; başlığı ve çıkışı merkez sağlar.
+export default function AdminPage({ embedded = false }) {
   const navigate    = useNavigate()
   const [tab, setTab]           = useState('items')   // 'items' | 'categories'
   const [categories, setCategories] = useState([])
@@ -54,7 +55,7 @@ export default function AdminPage() {
   return (
     <div className="admin-layout">
       {/* ── Header ── */}
-      <header className="admin-header">
+      {!embedded && <header className="admin-header">
         <div className="admin-header-brand">
           <img
             src={`${import.meta.env.BASE_URL}logo-balanced.png`}
@@ -74,7 +75,7 @@ export default function AdminPage() {
             <LogOut size={14} /> Çıkış
           </button>
         </div>
-      </header>
+      </header>}
 
       {/* ── Content ── */}
       <div className="admin-content">
@@ -158,9 +159,9 @@ export default function AdminPage() {
       {itemModal && <ItemModal      data={itemModal}  onClose={() => setItemModal(null)} onSaved={reload} categories={categories} />}
 
       {/* ── Footer ── */}
-      <footer className="admin-footer">
+      {!embedded && <footer className="admin-footer">
         © <span>Mehmet Ali ERDOĞAN</span>
-      </footer>
+      </footer>}
     </div>
   )
 }

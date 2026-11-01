@@ -14,6 +14,8 @@ const ORDER_ERRORS = {
   rate_limited: 'Çok sık sipariş gönderildi, biraz sonra tekrar deneyin.',
   idempotency_key_conflict: 'Gönderim çakıştı. Sepeti kontrol edip yeniden gönderin.',
   channel_closed: 'Bu sipariş türü şu anda kapalı. Başka bir seçenek deneyin.',
+  ordering_closed: 'Şu anda sipariş alınmıyor. Lütfen daha sonra tekrar deneyin.',
+  outside_hours: 'Çalışma saatlerimiz dışında sipariş alınmıyor.',
   out_of_area: 'Bu adres teslimat bölgemizin dışında.',
   below_minimum: 'Sepet tutarı bu bölgenin asgari sipariş tutarının altında.',
   invalid_name: 'Adınızı ve soyadınızı kontrol edin.',

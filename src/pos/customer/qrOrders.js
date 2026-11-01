@@ -26,6 +26,7 @@ export function mapQrOrder(row) {
 export function classifyTable({ data, error }) {
   if (!error) return { state: 'ready', label: data?.table_label }
   if (/^pos:invalid_table/.test(error.message ?? '')) return { state: 'invalid' }
+  if (/^pos:(ordering_closed|outside_hours|channel_closed)/.test(error.message ?? '')) return { state: 'unavailable' }
   if (['PGRST202', '42883', '3F000', 'PGRST205', '42P01'].includes(error.code)) return { state: 'unavailable' }
   return { state: 'unreachable' }
 }

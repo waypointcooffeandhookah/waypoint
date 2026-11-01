@@ -91,7 +91,7 @@ function OrderCard({ order, role, busy, run, backend }) {
   )
 }
 
-function Board({ backend, role }) {
+export function Board({ backend, role }) {
   const [orders, setOrders] = useState(null)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)

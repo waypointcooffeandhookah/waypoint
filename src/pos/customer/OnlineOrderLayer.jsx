@@ -16,7 +16,7 @@ const CARDS = [
 
 function ChannelView({ ordering }) {
   const { config, channel } = ordering
-  const cards = CARDS.filter(card => card.key === 'dine_in' || config[card.key])
+  const cards = CARDS.filter(card => card.key === 'dine_in' ? config.dine_in !== false : config[card.key])
   return (
     <div className="qr-sheet-body">
       <p className="qr-channel-lead">Nasıl sipariş vermek istersiniz?</p>

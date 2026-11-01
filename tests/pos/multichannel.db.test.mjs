@@ -28,7 +28,7 @@ const closed = {
 }
 
 test('kanallar varsayılan kapalıdır: ücret ve bölge uydurulmaz, sipariş reddedilir', () => {
-  assert.deepEqual(closed.config, { pickup: false, delivery: false })
+  assert.deepEqual([closed.config.pickup, closed.config.delivery], [false, false])
   assert.match(closed.pickup, /channel_closed/)
   assert.match(closed.delivery, /channel_closed/)
   assert.deepEqual(closed.address, { in_area: false })

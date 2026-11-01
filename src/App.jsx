@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import { isAdmin } from './utils/adminAccess'
 import GeneralMenuRoute from './pages/GeneralMenuRoute'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
-const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AdminApp = lazy(() => import('./admin/AdminApp'))
 const WaiterApp = lazy(() => import('./pos/waiter/WaiterApp'))
 const KitchenApp = lazy(() => import('./pos/kitchen/KitchenApp'))
 const QrOrderRoute = lazy(() => import('./pos/customer/QrOrderRoute'))
@@ -32,14 +32,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<GeneralMenuRoute />} />
       <Route path="/admin/login" element={<LoginPage />} />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/admin" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
+      <Route path="/admin/:section" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
       <Route path="/garson/*" element={<WaiterApp />} />
       <Route path="/mutfak" element={<KitchenApp />} />
       <Route path="/masa/:tableToken" element={<QrOrderRoute />} />

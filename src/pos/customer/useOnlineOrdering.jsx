@@ -59,7 +59,7 @@ export function useOnlineOrdering(config) {
   useEffect(() => {
     if (!config || asked.current) return
     asked.current = true
-    if (!onboarding.done && !initial.pending) queueMicrotask(() => setSheet('channel'))
+    if (!onboarding.done && !initial.pending && config.auto_open !== false) queueMicrotask(() => setSheet('channel'))
   }, [config, onboarding.done, initial.pending])
 
   useEffect(() => {
