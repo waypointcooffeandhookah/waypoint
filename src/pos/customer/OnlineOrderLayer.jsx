@@ -34,7 +34,7 @@ function ChannelView({ ordering }) {
           <span>Masanızı güvenle doğrulamak için telefonunuzun kamerasıyla <strong>masadaki QR kodu</strong> okutun. Menü, masanız seçili olarak açılır.</span>
         </p>
       )}
-      <button type="button" className="pos-btn pos-btn-ghost qr-channel-browse" onClick={ordering.closeSheet}>Yalnızca menüye göz at</button>
+      <button type="button" className="pos-btn pos-btn-ghost qr-channel-browse" onClick={ordering.browseOnly}>Yalnızca menüye göz at</button>
     </div>
   )
 }

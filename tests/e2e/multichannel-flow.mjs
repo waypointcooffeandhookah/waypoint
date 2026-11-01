@@ -51,7 +51,7 @@ async function openPage() {
   }
   await cdp('Page.enable'); await cdp('Runtime.enable'); await cdp('Network.enable')
   return {
-    cdp, ev, onPaused: handler => paused.push(handler),
+    cdp, ev, onPaused: handler => paused.push(handler), resetPaused: () => { paused.length = 0 },
     size: (width, height) => cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 1000 }),
     go: path => cdp('Page.navigate', { url: BASE + path }),
     until: async (expression, label, ms = 25000) => {
@@ -139,6 +139,187 @@ try {
   await login(kitchen, '/mutfak', creds.kitchen)
   await kitchen.until(`document.querySelector('.kt-board')`, 'mutfak panosu')
 
+  // ── Otomatik sipariş türü sırası ──
+  const visitor = await openPage()
+  await visitor.size(390, 844)
+  const newVisit = async () => {
+    await visitor.go('/')
+    await visitor.until('document.body', 'sayfa')
+    await visitor.ev('localStorage.clear();sessionStorage.clear()')
+  }
+  const enterHero = async (page, path = '/') => {
+    await page.go(path)
+    await page.until(`[...document.querySelectorAll('button')].some(b=>b.innerText.includes('MENÜYÜ KEŞFET'))`, 'karşılama ekranı')
+    await page.clickText('MENÜYÜ KEŞFET')
+    await page.until(`document.querySelector('.menu-search')&&!document.querySelector('.hero-viewport')`, 'menü')
+  }
+  const chooser = `document.querySelector('.qr-sheet .qr-channels')`
+  const noPopups = async (page, ms = 1800, label = 'beklenmeyen pencere') => {
+    const end = Date.now() + ms
+    while (Date.now() < end) {
+      expect(!await page.ev(`!!document.querySelector('.qr-sheet,.welcome-promotion')`), label)
+      await sleep(100)
+    }
+  }
+  const neverTogether = `!(document.querySelector('.welcome-promotion')&&document.querySelector('.qr-sheet'))`
+
+  await step('İlk ziyaret: Tanıtım → Kapat → Sipariş türü kendiliğinden açılır; ikisi birlikte görünmez; kullanılamayan kanal yok', async () => {
+    await newVisit()
+    await enterHero(visitor)
+    await visitor.until(`document.querySelector('.welcome-promotion')`, 'tanıtım')
+    await sleep(800)
+    expect(await visitor.ev(neverTogether) && !await visitor.ev(chooser), 'tanıtımla birlikte seçim açıldı')
+    await visitor.shot('onboarding-promo-390')
+    await visitor.click('.promotion-close')
+    await visitor.until(chooser, 'seçim penceresi', 4000)
+    expect(await visitor.ev(`!document.querySelector('.welcome-promotion')`), 'iki pencere birlikte')
+    const options = await visitor.ev(`[...document.querySelectorAll('.qr-channel strong')].map(e=>e.innerText)`)
+    expect(options.join('|') === 'Masada Sipariş|Paket / Gel Al|Kurye ile Teslimat', `seçenekler: ${options}`)
+    expect(await visitor.ev(`!!document.querySelector('.qr-channel-browse')`), 'göz at seçeneği yok')
+    expect(await visitor.ev(`document.querySelectorAll('.modal-sheet').length`) === 1, 'çift pencere')
+    expect(await visitor.ev('document.body.style.overflow') === 'hidden', 'kaydırma kilidi')
+    expect(await visitor.ev(`document.querySelector('.qr-sheet').contains(document.activeElement)`), 'odak pencerede değil')
+    await visitor.shot('onboarding-chooser-390')
+  })
+  await step('Escape pencereyi kapatır, kilit kalkar; yenilemede tanıtım ve seçim yeniden açılmaz; menü düğmesi yeniden açar', async () => {
+    await visitor.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+    await visitor.until(`!document.querySelector('.qr-sheet')`, 'Escape ile kapandı', 3000)
+    expect(await visitor.ev('document.body.style.overflow') !== 'hidden', 'kaydırma kilitli kaldı')
+    await noPopups(visitor, 1500)
+    await enterHero(visitor)
+    await noPopups(visitor, 2500, 'yenilemede pencere açıldı')
+    await visitor.click('.qr-channel-chip')
+    await visitor.until(chooser, 'düğmeyle seçim')
+    await visitor.click('.qr-sheet-head .pos-icon-btn')
+    await visitor.until(`!document.querySelector('.qr-sheet')`, 'kapandı')
+  })
+  await step('Tanıtım yanıtı geç gelse de sıra korunur; seçim önce açılmaz', async () => {
+    await newVisit()
+    const held = []
+    visitor.resetPaused()
+    visitor.onPaused(params => held.push(params.requestId))
+    await visitor.cdp('Fetch.enable', { patterns: [{ urlPattern: '*menu_promotion*' }] })
+    await enterHero(visitor)
+    await sleep(1500)
+    expect(!await visitor.ev(chooser), 'tanıtım yanıtı gelmeden seçim açıldı')
+    for (const requestId of held) await visitor.cdp('Fetch.continueRequest', { requestId })
+    await visitor.until(`document.querySelector('.welcome-promotion')`, 'geç gelen tanıtım')
+    expect(await visitor.ev(neverTogether), 'iki pencere birlikte')
+    await visitor.cdp('Fetch.disable')
+    visitor.resetPaused()
+    await visitor.click('.promotion-close')
+    await visitor.until(chooser, 'seçim penceresi', 4000)
+  })
+  await step('Tanıtım yoksa sipariş türü doğrudan açılır', async () => {
+    await newVisit()
+    visitor.resetPaused()
+    // Tanıtım kapalı olan sunucu yanıtının aynısı: boş sonuç.
+    visitor.onPaused(params => params.request.method === 'OPTIONS'
+      ? visitor.cdp('Fetch.continueRequest', { requestId: params.requestId })
+      : visitor.cdp('Fetch.fulfillRequest', { requestId: params.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }], body: Buffer.from('[]').toString('base64') }))
+    await visitor.cdp('Fetch.enable', { patterns: [{ urlPattern: '*menu_promotion*' }] })
+    try {
+      await enterHero(visitor)
+      await visitor.until(chooser, 'seçim penceresi', 5000)
+      expect(!await visitor.ev(`!!document.querySelector('.welcome-promotion')`), 'tanıtım açıldı')
+    } finally {
+      await visitor.cdp('Fetch.disable')
+      visitor.resetPaused()
+    }
+  })
+  await step('Tanıtım isteği ağ hatası verse de sipariş türü sonunda açılır, takılı kalmaz', async () => {
+    await newVisit()
+    visitor.resetPaused()
+    visitor.onPaused(params => visitor.cdp('Fetch.failRequest', { requestId: params.requestId, errorReason: 'Failed' }))
+    await visitor.cdp('Fetch.enable', { patterns: [{ urlPattern: '*menu_promotion*' }] })
+    try {
+      await enterHero(visitor)
+      const started = Date.now()
+      await visitor.until(chooser, 'seçim penceresi', 45000)
+      return `${((Date.now() - started) / 1000).toFixed(1)} sn sonra açıldı`
+    } finally {
+      await visitor.cdp('Fetch.disable')
+      visitor.resetPaused()
+    }
+  })
+  await step('Tanıtımdaki ürüne gidilirse ürün penceresi bölünmez; seçim ürün kapanınca açılır', async () => {
+    await newVisit()
+    await enterHero(visitor)
+    await visitor.until(`document.querySelector('.welcome-promotion .btn-primary')`, 'Ürüne git')
+    await visitor.click('.welcome-promotion .btn-primary')
+    await visitor.until(`document.querySelector('[id="product-modal-title"]')`, 'ürün penceresi')
+    await sleep(1500)
+    expect(!await visitor.ev(chooser) && !await visitor.ev(`!!document.querySelector('.welcome-promotion')`), 'ürün penceresi bölündü')
+    await visitor.click('.modal-close-round-btn')
+    await visitor.until(chooser, 'ürün sonrası seçim', 4000)
+  })
+  await step('Yalnızca göz at: salt menü görünümü, kesinti yok, yenilemede korunur; sonradan değiştirilebilir', async () => {
+    await visitor.click('.qr-channel-browse')
+    await visitor.until(`!document.querySelector('.qr-sheet')`, 'kapandı')
+    await noPopups(visitor, 1500)
+    expect(!await visitor.ev(`!!document.querySelector('.qr-add,.qr-bar-cart')`), 'sipariş düğmesi göründü')
+    await visitor.ev(`[...document.querySelectorAll('.editorial-card')][0].click()`)
+    await visitor.until(`document.querySelector('[id="product-modal-title"]')`, 'ürün')
+    expect(await visitor.ev(`!!document.querySelector('.modal-sheet-footer-note')`) && !await visitor.ev(`!!document.querySelector('.qr-continue,.qr-continue-channel,.qr-add-wide')`), 'salt menü görünümü değil')
+    await visitor.click('.modal-close-round-btn')
+    await noPopups(visitor, 1200, 'ürün kapanınca pencere açıldı')
+    await enterHero(visitor)
+    await noPopups(visitor, 2000, 'yenilemede pencere açıldı')
+    expect(!await visitor.ev(`!!document.querySelector('.qr-add')`), 'seçim korunmadı')
+    await visitor.click('.qr-channel-chip')
+    await visitor.until(chooser, 'seçim')
+    await visitor.click('[data-channel="pickup"]')
+    await visitor.until(`!document.querySelector('.qr-sheet')&&document.querySelector('.qr-channel-chip')?.innerText.includes('Paket')`, 'yeni seçim')
+    await visitor.until(`document.querySelector('.qr-add')`, 'sipariş açıldı')
+  })
+  await step('Seçim korunur: ürün, adet ve sepet değişimi ile yenileme pencereyi açmaz; yeni ziyarette sorulur, önceki seçim işaretli', async () => {
+    await openProduct(visitor, 'Americano')
+    await visitor.until(`document.querySelector('.qr-add-wide')`, 'sepete ekle')
+    await visitor.click('.qr-add-wide')
+    await continueToCart(visitor, /130,00/)
+    expect(await visitor.ev(`!!document.querySelector('.qr-sheet .qr-send')&&!document.querySelector('.qr-channels')`), 'sepet yerine seçim açıldı')
+    await visitor.click('.qr-sheet-head .pos-icon-btn')
+    await visitor.until(`!document.querySelector('.qr-sheet')`, 'kapandı')
+    await visitor.type('.menu-search', 'Latte')
+    await noPopups(visitor, 800, 'arama pencere açtı')
+    await enterHero(visitor)
+    await noPopups(visitor, 2000, 'yenilemede pencere açıldı')
+    expect((await visitor.ev(`document.querySelector('.qr-channel-chip').innerText`)).includes('Paket'), 'seçim kayboldu')
+    await visitor.ev('sessionStorage.clear()')
+    await enterHero(visitor)
+    await visitor.until(`document.querySelector('.welcome-promotion')`, 'yeni ziyarette tanıtım')
+    await visitor.click('.promotion-close')
+    await visitor.until(chooser, 'yeni ziyarette seçim', 4000)
+    expect(await visitor.ev(`document.querySelector('[data-channel="pickup"]').getAttribute('aria-pressed')`) === 'true', 'önceki seçim işaretli değil')
+  })
+  await step('Yerleşim: seçim penceresi 320 px dahil tüm ekranlarda sığar, tüm seçeneklere ulaşılır', async () => {
+    for (const [width, height] of [[320, 568], [390, 844], [820, 1180], [1366, 900]]) {
+      await visitor.size(width, height)
+      await sleep(800)
+      const box = await visitor.ev(`(()=>{const s=document.querySelector('.qr-sheet').getBoundingClientRect();const b=document.querySelector('.qr-channel-browse');b.scrollIntoView({block:'nearest'});const r=b.getBoundingClientRect();return {left:s.left,right:s.right,top:s.top,bottom:s.bottom,bTop:r.top,bBottom:r.bottom,h:innerHeight,w:innerWidth,bh:r.height,over:document.documentElement.scrollWidth-document.documentElement.clientWidth}})()`)
+      expect(box.left >= 0 && box.right <= box.w && box.top >= 0, `${width}px pencere: ${JSON.stringify(box)}`)
+      expect(box.bBottom <= box.h && box.bTop >= 0 && box.bh >= 44, `${width}px göz at: ${box.bTop}-${box.bBottom}/${box.h} yükseklik ${box.bh}`)
+      expect(box.over === 0, `${width}px taşma`)
+      await visitor.shot(`onboarding-${width}`)
+    }
+    await visitor.size(390, 844)
+    await visitor.click('.qr-channel-browse')
+  })
+  await step('Masa QR: doğru masa açılır, genel seçim penceresi çıkmaz; masa siparişi çalışır, paket ve kurye bağlantısı durur', async () => {
+    await visitor.go('/')
+    await visitor.until('document.body', 'sayfa')
+    await visitor.ev('localStorage.clear();sessionStorage.clear()')
+    await enterHero(visitor, `/masa/${tokens['Masa 5']}`)
+    await visitor.until(`document.querySelector('.welcome-promotion')`, 'tanıtım')
+    expect(!await visitor.ev(chooser), 'tanıtımda seçim')
+    await visitor.click('.promotion-close')
+    await visitor.until(`document.querySelector('.qr-table-chip')?.innerText.includes('Masa 5')`, 'masa etiketi')
+    await sleep(1500)
+    expect(!await visitor.ev(`!!document.querySelector('.qr-sheet,.qr-channels')`), 'masa QR\'ında seçim penceresi')
+    await visitor.until(`document.querySelector('.qr-other-channels')`, 'genel menü bağlantısı')
+    await visitor.until(`document.querySelector('.qr-add')`, 'masa siparişi açık')
+  })
+
   await step('Genel menü: üç kanal kartı açılır, masa seçimi paket ve kurye için zorunlu değildir', async () => {
     await enterMenu(customer, '/')
     await customer.until(`document.querySelectorAll('.qr-channel').length===3`, 'üç kanal kartı')
@@ -150,7 +331,7 @@ try {
   })
 
   await step('Kanal seçilmeden ürün açılınca sonraki adım gösterilir, seçim sayfasına gider', async () => {
-    await customer.clickText('Yalnızca menüye göz at')
+    await customer.click('.qr-sheet-head .pos-icon-btn')
     await customer.until(`!document.querySelector('.qr-sheet')`, 'sayfa kapandı')
     await openProduct(customer, 'Americano')
     await customer.until(`document.querySelector('.qr-continue-channel')`, 'tür seçme düğmesi')

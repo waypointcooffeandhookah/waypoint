@@ -9,7 +9,7 @@ import { createSubmission, reconcileOrder, submitOrder } from '../orderSubmissio
 import { checkDeliveryAddress, getOrderTracking, getOrderingConfig, onlineOrderTransport } from '../posApi'
 import { useOrderSync } from '../useOrderSync'
 import OrderControl from './OrderControl'
-import { checkoutSummary, emptyForm, loadOnlineState, mapOnlineOrder, mapTracking, saveOnlineState, toOnlinePayload, validateCheckout } from './onlineOrders'
+import { checkoutSummary, emptyForm, loadOnboarding, loadOnlineState, mapOnlineOrder, mapTracking, saveOnboarding, saveOnlineState, toOnlinePayload, validateCheckout } from './onlineOrders'
 
 const POLL_MS = 15000
 // Anonim müşterinin tablolara okuma yetkisi yok, Realtime gelmez: durum düzenli okunur.
@@ -50,13 +50,17 @@ export function useOnlineOrdering(config) {
   }, [config, channel])
   const orderingChannel = usable === 'pickup' || usable === 'delivery' ? usable : null
 
-  // İlk kez gelen müşteriye seçim sorulur; kayıtlı seçim korunur.
+  // Her ziyarette bir kez sorulur. Pencere burada yalnızca istenir; menü, tanıtım ve ürün penceresi
+  // kapanmadan göstermez. Müşteri yanıtlayınca bu ziyarette yenilemede de açılmaz.
+  const [onboarding, setOnboarding] = useState(() => loadOnboarding())
+  const finishOnboarding = useCallback(() => setOnboarding(current => current.done ? current : { ...current, done: true }), [])
+  useEffect(() => { saveOnboarding(onboarding) }, [onboarding])
   const asked = useRef(false)
   useEffect(() => {
     if (!config || asked.current) return
     asked.current = true
-    if (!usable) queueMicrotask(() => setSheet('channel'))
-  }, [config, usable])
+    if (!onboarding.done && !initial.pending) queueMicrotask(() => setSheet('channel'))
+  }, [config, onboarding.done, initial.pending])
 
   useEffect(() => {
     if (!config) return
@@ -179,7 +183,7 @@ export function useOnlineOrdering(config) {
     settle(sub, await submitOrder(sub, onlineOrderTransport))
   }
 
-  const closeSheet = useCallback(() => { setSheet(null); setConfirmed(null) }, [])
+  const closeSheet = useCallback(() => { finishOnboarding(); setSheet(null); setConfirmed(null) }, [finishOnboarding])
   const locked = submitState === 'sending' || submitState === 'uncertain'
 
   return {
@@ -187,11 +191,18 @@ export function useOnlineOrdering(config) {
     channel: usable,
     selectChannel(next) {
       if (locked) return
+      setOnboarding({ done: true, browseOnly: false })
       setChannelState(next)
       setSubmitState('idle')
       setRejectCode(null)
       setErrors({})
       setSheet(next === 'dine_in' ? 'channel' : cartCount(cart) ? 'cart' : null)
+    },
+    // Salt menü görünümü: sipariş düğmesi çıkmaz, seçim üstteki kanal düğmesiyle yeniden açılır.
+    browseOnly() {
+      setOnboarding({ done: true, browseOnly: true })
+      if (!locked) setChannelState(null)
+      setSheet(null)
     },
     status: orderingChannel && catalog ? 'ready' : 'browse',
     catalogError,
@@ -199,14 +210,14 @@ export function useOnlineOrdering(config) {
     dispatch,
     count: cartCount(cart),
     canCheckout: Boolean(orderingChannel),
-    needsChannel: !orderingChannel,
+    needsChannel: !orderingChannel && !onboarding.browseOnly,
     cartTotalLabel: formatCents(subtotalCents),
     locked,
     submitState,
     rejectCode,
     confirmed,
     sheet,
-    openSheet: setSheet,
+    openSheet(next) { finishOnboarding(); setSheet(next) },
     closeSheet,
     dismissConfirmation: () => setConfirmed(null),
     submit,

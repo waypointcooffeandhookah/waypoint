@@ -1,6 +1,7 @@
 // Paket ve kurye siparişinin saf mantığı. Sunucu her kuralı yeniden denetler; buradaki denetim
 // yalnızca müşteriye hatayı erken göstermek içindir. Ücret ve toplam sunucudan gelir.
 const STORAGE_KEY = 'waypoint-online-order-v1'
+const ONBOARDING_KEY = 'waypoint-order-onboarding-v1'
 export const PENDING_MAX_AGE_MS = 10 * 60 * 1000
 const MAX_TRACKED = 10
 
@@ -82,6 +83,20 @@ export function trackingSteps({ fulfillmentType, kitchenStatus, fulfillmentStatu
   const steps = [['new', 'Alındı'], ['preparing', 'Hazırlanıyor'], ...finalSteps]
   const position = fulfillmentStatus === 'pending' ? (kitchenStatus === 'preparing' ? 1 : 0) : steps.findIndex(([key]) => key === fulfillmentStatus)
   return steps.map(([key, label], index) => ({ key, label, state: index < position ? 'done' : index === position ? 'current' : 'todo' }))
+}
+
+// Seçim penceresi her yeni ziyarette bir kez açılır; sekme kapanınca sayaç sıfırlanır.
+export function loadOnboarding(storage = globalThis.sessionStorage) {
+  try {
+    const saved = JSON.parse(storage.getItem(ONBOARDING_KEY))
+    return { done: saved?.done === true, browseOnly: saved?.browseOnly === true }
+  } catch {
+    return { done: false, browseOnly: false }
+  }
+}
+
+export function saveOnboarding(onboarding, storage = globalThis.sessionStorage) {
+  try { storage.setItem(ONBOARDING_KEY, JSON.stringify(onboarding)) } catch { /* Depolama kapalı olabilir. */ }
 }
 
 const emptyState = () => ({ channel: null, cart: null, orders: [], pending: null })

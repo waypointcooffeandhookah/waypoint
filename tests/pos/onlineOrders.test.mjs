@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { checkoutSummary, emptyForm, loadOnlineState, saveOnlineState, toOnlinePayload, trackingSteps, validateCheckout, mapTracking } from '../../src/pos/customer/onlineOrders.js'
+import { readFileSync } from 'node:fs'
+import { checkoutSummary, emptyForm, loadOnboarding, loadOnlineState, saveOnboarding, saveOnlineState, toOnlinePayload, trackingSteps, validateCheckout, mapTracking } from '../../src/pos/customer/onlineOrders.js'
 import { canCancel, columnOf, groupFulfillment, nextFulfillmentStep } from '../../src/pos/fulfillment/fulfillmentOrders.js'
 import { FULFILLMENT_LABELS, mapKitchenOrder } from '../../src/pos/kitchen/kitchenOrders.js'
 
@@ -57,6 +58,25 @@ test('saklama: bekleyen gönderim süresi dolunca silinir; bozuk kayıt güvenli
   assert.deepEqual(loadOnlineState(now, storage).orders.map(o => o.token), [token])
   storage.setItem('waypoint-online-order-v1', '{bozuk')
   assert.equal(loadOnlineState(now, storage).channel, null)
+})
+
+test('karşılama: yeni ziyarette açılır, yanıtlanınca ziyaret boyunca açılmaz; bozuk kayıt güvenli', () => {
+  const storage = memory()
+  assert.deepEqual(loadOnboarding(storage), { done: false, browseOnly: false })
+  saveOnboarding({ done: true, browseOnly: true }, storage)
+  assert.deepEqual(loadOnboarding(storage), { done: true, browseOnly: true })
+  storage.setItem('waypoint-order-onboarding-v1', '{bozuk')
+  assert.deepEqual(loadOnboarding(storage), { done: false, browseOnly: false })
+  assert.deepEqual(loadOnboarding({ getItem() { throw new Error('kapalı') } }), { done: false, browseOnly: false })
+})
+
+test('karşılama: sıra durum tabanlıdır; zamanlayıcı yok, ikinci pencere yok', () => {
+  const menu = readFileSync(new URL('../../src/pages/MenuPage.jsx', import.meta.url), 'utf8')
+  assert.match(menu, /!showHero && !selectedProduct && promotionSettled && !promotionVisible && orderLayer/)
+  const hook = readFileSync(new URL('../../src/pos/customer/useOnlineOrdering.jsx', import.meta.url), 'utf8')
+  const block = hook.slice(hook.indexOf('const [onboarding'), hook.indexOf('useEffect(() => {\n    if (!config) return\n    let active'))
+  assert.doesNotMatch(block, /setTimeout|setInterval|querySelector/)
+  assert.doesNotMatch(readFileSync(new URL('../../src/pos/customer/qrOrders.js', import.meta.url), 'utf8'), /onboarding/i)
 })
 
 test('yönetim: sütun ve sıradaki adım mutfaktan ayrıdır; hazır olmadan teslim açılmaz', () => {

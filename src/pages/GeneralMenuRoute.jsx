@@ -10,19 +10,20 @@ const OnlineOrderingController = lazy(() => import('../pos/customer/OnlineOrderi
 export default function GeneralMenuRoute() {
   const [config, setConfig] = useState(null)
   const [slots, setSlots] = useState(null)
+  const [configSettled, setConfigSettled] = useState(false)
 
   useEffect(() => {
     let active = true
     Promise.resolve(supabase.rpc('get_ordering_config')).then(({ data, error }) => {
       if (active && !error && (data?.pickup || data?.delivery)) setConfig(data)
-    }, () => {})
+    }, () => {}).finally(() => { if (active) setConfigSettled(true) })
     return () => { active = false }
   }, [])
 
   return (
     <>
       {config && <Suspense fallback={null}><OnlineOrderingController config={config} onChange={setSlots} /></Suspense>}
-      <MenuPage ordering={slots?.ordering ?? null} tableChip={slots?.chip ?? null} orderLayer={slots?.layer ?? null} />
+      <MenuPage promotionPerVisit orderingPending={!configSettled || Boolean(config && !slots)} ordering={slots?.ordering ?? null} tableChip={slots?.chip ?? null} orderLayer={slots?.layer ?? null} />
     </>
   )
 }

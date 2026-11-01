@@ -205,16 +205,26 @@ function groupCatalog(allItems) {
   return result
 }
 
+const PROMOTION_SESSION_KEY = 'waypoint-promotion-dismissed-v1'
+
 // ordering ve yuvaları masa QR'ından veya açık paket/kurye kanalından gelir; yoksa salt menüdür.
-export default function MenuPage({ ordering = null, tableChip = null, orderBanner = null, orderLayer = null }) {
+export default function MenuPage({ ordering = null, tableChip = null, orderBanner = null, orderLayer = null, promotionPerVisit = false, orderingPending = false }) {
   const [promotionId, setPromotionId] = useState(null)
-  const [promotionDismissed, setPromotionDismissed] = useState(false)
-  const closePromotion = useCallback(() => setPromotionDismissed(true), [])
+  // Sipariş açık genel menüde tanıtım bu ziyarette bir kez gösterilir; salt menü ve masa QR'ı eskisi gibidir.
+  // Kayıt sipariş kodu yüklenmeden de yazılır, ama yalnızca sipariş açıksa dikkate alınır.
+  const [closedThisVisit] = useState(() => { try { return promotionPerVisit && sessionStorage.getItem(PROMOTION_SESSION_KEY) === '1' } catch { return false } })
+  const [closedNow, setClosedNow] = useState(false)
+  const promotionDismissed = closedNow || (closedThisVisit && Boolean(ordering))
+  const [promotionSettled, setPromotionSettled] = useState(false)
+  const closePromotion = useCallback(() => {
+    setClosedNow(true)
+    if (promotionPerVisit) { try { sessionStorage.setItem(PROMOTION_SESSION_KEY, '1') } catch { /* Depolama kapalı olabilir. */ } }
+  }, [promotionPerVisit])
   useEffect(() => {
     let active = true
-    supabase.from('menu_promotion').select('product_id, enabled').eq('id', 1).maybeSingle().then(({ data }) => {
+    Promise.resolve(supabase.from('menu_promotion').select('product_id, enabled').eq('id', 1).maybeSingle()).then(({ data }) => {
       if (active && data?.enabled) setPromotionId(data.product_id)
-    })
+    }, () => {}).finally(() => { if (active) setPromotionSettled(true) })
     return () => { active = false }
   }, [])
   const [showHero, setShowHero]           = useState(true)
@@ -412,7 +422,8 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
   )
 
   // Tanıtım penceresi açıkken sipariş katmanı beklemede kalır; iki pencere üst üste binmez.
-  const promotionVisible = !showHero && !promotionDismissed && !selectedProduct && items.some(item => item.id === promotionId && item.is_available !== false)
+  // Bu ziyarette kapatılmış tanıtım, sipariş durumu öğrenilmeden gösterilmez; yenilemede bir an görünmez.
+  const promotionVisible = !showHero && !promotionDismissed && !(closedThisVisit && orderingPending) && !selectedProduct && items.some(item => item.id === promotionId && item.is_available !== false)
 
   return (
     <div className={`menu-root-wrap${ordering ? ' qr-ordering' : ''}`}>
@@ -560,7 +571,8 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
           onOpenSheet={sheet => { closeProduct(); ordering.openSheet(sheet) }}
         />
       )}
-      {!showHero && !selectedProduct && !promotionVisible && orderLayer}
+      {/* Sıra: tanıtım → (varsa) ürün penceresi → sipariş katmanı. Tanıtım yanıtı gelmeden pencere açılmaz. */}
+      {!showHero && !selectedProduct && promotionSettled && !promotionVisible && orderLayer}
     </div>
   )
 }
