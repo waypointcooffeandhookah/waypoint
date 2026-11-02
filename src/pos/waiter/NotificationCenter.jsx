@@ -14,6 +14,30 @@ const BROWSER_NOTES = {
   granted: 'Açık. Panel açıkken arka plandaki sekmede gösterilir; tarayıcı kapalıyken çalışmaz.',
 }
 
+const PUSH_NOTES = {
+  insecure: 'Arka plan bildirimleri HTTPS gerektirir.',
+  'ios-install': 'iPhone/iPad: Safari\'de Paylaş → "Ana Ekrana Ekle" ile uygulamayı ekleyin, ana ekrandaki "WP Garson" simgesinden açıp giriş yapın ve buradan bildirimleri açın (iOS 16.4 veya üstü).',
+  unsupported: 'Bu tarayıcı arka plan bildirimini desteklemiyor. Android\'de Chrome, iPhone\'da Ana Ekran uygulaması kullanın. Uygulama içi bildirimler çalışır.',
+  denied: 'Bildirim izni reddedilmiş. Telefon ayarlarından (iPhone: Ayarlar → Bildirimler → WP Garson; Android: Site ayarları → Bildirimler) izin verip sayfayı yenileyin.',
+}
+
+function PushSettings({ push }) {
+  if (PUSH_NOTES[push.capability]) return <div className="wt-notify-browser"><p className="pos-muted">{PUSH_NOTES[push.capability]}</p></div>
+  return (
+    <div className="wt-notify-browser">
+      {push.active
+        ? <>
+          <p className="pos-muted">Arka plan bildirimleri bu cihazda açık: uygulama veya ekran kapalıyken de "sipariş hazır" bildirimi gelir.</p>
+          <button type="button" className="pos-btn pos-btn-ghost" onClick={push.disable} disabled={push.busy}>Bu cihazda kapat</button>
+        </>
+        : <button type="button" className="pos-btn pos-btn-ghost" onClick={push.enable} disabled={push.busy}>
+          {push.busy ? 'Açılıyor…' : 'Bu cihazda arka plan bildirimlerini aç'}
+        </button>}
+      {push.error && <p className="pos-alert" role="alert">{push.error}</p>}
+    </div>
+  )
+}
+
 function Banner({ item, onOpen, onDismiss }) {
   return (
     <div className="wt-notify-banner" role="alert">
@@ -53,11 +77,15 @@ function Panel({ center, onOpen, onClose }) {
             {center.soundOn ? <Volume2 size={16} aria-hidden="true" /> : <VolumeX size={16} aria-hidden="true" />}
             <span>Bildirim sesi: {center.soundOn ? 'Açık' : 'Kapalı'}</span>
           </button>
-          <div className="wt-notify-browser">
-            {center.browserStatus === 'default'
-              ? <button type="button" className="pos-btn pos-btn-ghost" onClick={center.requestBrowserPermission}>Tarayıcı bildirimlerine izin ver</button>
-              : <p className="pos-muted">{BROWSER_NOTES[center.browserStatus]}</p>}
-          </div>
+          {center.push.capability === 'unconfigured'
+            ? (
+              <div className="wt-notify-browser">
+                {center.browserStatus === 'default'
+                  ? <button type="button" className="pos-btn pos-btn-ghost" onClick={center.requestBrowserPermission}>Tarayıcı bildirimlerine izin ver</button>
+                  : <p className="pos-muted">{BROWSER_NOTES[center.browserStatus]}</p>}
+              </div>
+            )
+            : <PushSettings push={center.push} />}
         </div>
 
         <ol className="wt-notify-list">

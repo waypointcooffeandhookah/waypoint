@@ -10,6 +10,7 @@ const read = path => readFileSync(new URL(path, root), 'utf8')
 const AUTH_STUB = `
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin bypassrls;
   create schema auth;
   grant usage on schema auth to anon, authenticated;
   create table auth.users (id uuid primary key, raw_app_meta_data jsonb not null default '{}');
@@ -37,6 +38,7 @@ export async function createDb() {
   await db.exec(read('supabase/migrations/20261031090000_pos_fail_search_path.sql'))
   await db.exec(read('supabase/migrations/20261101090000_pos_multichannel.sql'))
   await db.exec(read('supabase/migrations/20261101120000_pos_ordering_controls.sql'))
+  await db.exec(read('supabase/migrations/20261103090000_pos_web_push.sql'))
   // Mevcut kurulum betiği menü tablolarını Supabase varsayılan yetkileriyle bıraktığı için
   // testte de okumayı açıyoruz (supabase_security.sql ile aynı).
   await db.exec('grant select on public.categories, public.menu_items to anon, authenticated')

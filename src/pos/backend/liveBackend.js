@@ -93,6 +93,16 @@ export function createLiveBackend(supabase) {
       return data.map(mapNotificationRow)
     },
 
+    // Web Push: cihaz aboneliği sunucuya bildirilir; yetki ve uç nokta listesi sunucuda denetlenir.
+    async registerPushSubscription({ endpoint, p256dh, auth, userAgent }) {
+      const { error } = await supabase.rpc('register_push_subscription', { p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_user_agent: userAgent || null })
+      if (error) throw error
+    },
+    async unregisterPushSubscription(endpoint) {
+      const { error } = await supabase.rpc('unregister_push_subscription', { p_endpoint: endpoint })
+      if (error) throw error
+    },
+
     // Müşteri bilgileri yalnızca kasiyer, müdür ve yönetici için döner (RLS).
     async listFulfillmentOrders() {
       const since = new Date(Date.now() - FULFILLMENT_WINDOW_MS).toISOString()

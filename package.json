@@ -8,6 +8,7 @@
     "dev:staging": "vite --mode staging --host",
     "build": "vite build",
     "build:local": "vite build --base=/",
+    "build:cloudflare": "node scripts/cloudflare-build.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --test scripts/*.test.mjs tests/pos/*.test.mjs",
@@ -17,8 +18,10 @@
     "test:multichannel": "node tests/integration/multichannel.mjs",
     "test:e2e:multichannel": "node tests/e2e/multichannel-flow.mjs",
     "test:e2e:admin": "node tests/e2e/admin-flow.mjs",
+    "test:cloudflare:smoke": "node tests/e2e/cloudflare-staging-smoke.mjs",
     "staging:menu": "node scripts/staging-import-menu.mjs",
-    "staging:staff": "node scripts/staging-create-staff.mjs"
+    "staging:staff": "node scripts/staging-create-staff.mjs",
+    "push:keys": "node scripts/generate-push-keys.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

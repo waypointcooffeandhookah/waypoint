@@ -8,6 +8,7 @@ import { createDemoBackend } from './backend/demoBackend'
 import { createBrowserDemoStore } from './backend/demoStore'
 import { createLiveBackend } from './backend/liveBackend'
 import { detectPosMode, getStaff } from './backend/staffAuth'
+import { disablePush } from './waiter/webPush'
 
 const DEMO_SESSION_KEY = 'waypoint-pos-demo-session'
 
@@ -66,6 +67,8 @@ export function usePosSession({ demoStaff }) {
     startDemo() { writeDemoSession(true); setStaff(demoStaff) },
     async signOut() {
       if (mode === 'demo') { writeDemoSession(false); setStaff(null); return }
+      // Paylaşılan cihazda önceki kişiye bildirim gitmesin: oturum kapanmadan cihaz aboneliği bırakılır.
+      try { await disablePush({ backend }) } catch { /* Push yoksa veya desteklenmiyorsa çıkış yine yapılır. */ }
       await supabase.auth.signOut()
       setStaff(null)
     },

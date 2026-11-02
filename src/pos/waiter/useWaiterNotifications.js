@@ -7,6 +7,7 @@ import {
   SOUND_PREF_KEY, browserNotificationStatus, loadNotificationState, notificationStorageKey,
   reconcileNotifications, saveNotificationState, showBrowserNotification, unreadCount,
 } from './notifications'
+import { useWebPush } from './useWebPush'
 
 const REFRESH_MS = 15000
 const MAX_BANNERS = 3
@@ -25,6 +26,10 @@ export function useWaiterNotifications(backend, staffId) {
   const [chime] = useState(createChime)
   const soundRef = useRef(soundOn)
   useEffect(() => { soundRef.current = soundOn }, [soundOn])
+  // Arka plan push açıkken sistem bildirimini service worker gösterir; sekme ikinci kez göstermez.
+  const push = useWebPush(backend, staffId)
+  const pushActiveRef = useRef(push.active)
+  useEffect(() => { pushActiveRef.current = push.active }, [push.active])
 
   const load = useCallback(async () => {
     try {
@@ -39,7 +44,7 @@ export function useWaiterNotifications(backend, staffId) {
         setBannerIds(current => [...fresh.map(item => item.id), ...current])
         if (soundRef.current) chime.play()
         navigator.vibrate?.([120, 60, 120])
-        fresh.forEach(item => showBrowserNotification(item))
+        if (!pushActiveRef.current) fresh.forEach(item => showBrowserNotification(item))
       }
     } catch {
       setLoadError(true)
@@ -111,6 +116,7 @@ export function useWaiterNotifications(backend, staffId) {
       writeSoundPref(next, SOUND_PREF_KEY)
       setSoundOn(next)
     },
+    push,
     browserStatus,
     async requestBrowserPermission() {
       try { await window.Notification.requestPermission() } catch { /* Tarayıcı reddetti. */ }

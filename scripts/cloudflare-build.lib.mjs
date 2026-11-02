@@ -1,0 +1,112 @@
+// Cloudflare Pages staging derlemesinin saf denetimleri (scripts/cloudflare-build.mjs kullanır, testler doğrular).
+import { STAGING_REF, resolveSupabaseTarget } from '../src/supabaseTarget.js'
+
+export const STAGING_BRANCH = 'feature/restaurant-pos'
+export const OUT_DIR = 'dist-staging'
+
+// Derleme ortamında bulunmaması gereken sunucu sırları (Pages ortam değişkenlerine hiç konmamalı).
+export const FORBIDDEN_ENV = ['SUPABASE_SERVICE_ROLE_KEY', 'SERVICE_ROLE_KEY', 'VAPID_PRIVATE_KEY', 'PUSH_DISPATCH_SECRET', 'SUPABASE_ACCESS_TOKEN', 'SUPABASE_DB_PASSWORD']
+
+function jwtClaims(token) {
+  try {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
+  } catch {
+    return null
+  }
+}
+
+export function checkBranch(env) {
+  // Cloudflare derlemesinde CF_PAGES=1 ve CF_PAGES_BRANCH tanımlıdır. Başka dal staging'e yayınlanamaz.
+  if (env.CF_PAGES !== '1') return { ok: true, note: 'yerel derleme (Cloudflare dışı): dal denetimi atlandı' }
+  if (env.CF_PAGES_BRANCH !== STAGING_BRANCH) return { ok: false, error: `yalnızca ${STAGING_BRANCH} dalı derlenir (gelen: ${env.CF_PAGES_BRANCH || 'yok'})` }
+  return { ok: true }
+}
+
+// viteEnv: Vite'ın staging modunda göreceği VITE_* değerleri (loadEnv), processEnv: tüm derleme ortamı.
+export function checkBuildEnv(viteEnv, processEnv) {
+  const errors = []
+  const target = resolveSupabaseTarget({ MODE: 'staging', ...viteEnv }, null)
+  if (target.error) errors.push(`Supabase staging ayarı: ${target.error}`)
+  for (const name of FORBIDDEN_ENV) if (processEnv[name]) errors.push(`${name} derleme ortamında olmamalı (sunucu sırrı)`)
+  for (const [name, value] of Object.entries(viteEnv)) {
+    if (!name.startsWith('VITE_')) continue
+    if (/SERVICE|SECRET|PRIVATE|PASSWORD|TOKEN/i.test(name)) errors.push(`${name}: VITE_ ile başlayan değişken tarayıcı paketine girer; sır adı taşıyamaz`)
+    if (typeof value === 'string' && value.startsWith('sb_secret_')) errors.push(`${name}: gizli (sb_secret_) anahtar`)
+    const claims = typeof value === 'string' && /^eyJ/.test(value) ? jwtClaims(value) : null
+    if (claims && claims.role !== 'anon') errors.push(`${name}: JWT rolü "${claims.role}" — yalnızca anon olabilir`)
+  }
+  const pushKey = viteEnv.VITE_WEB_PUSH_PUBLIC_KEY
+  if (pushKey) {
+    let bytes = null
+    try { bytes = Buffer.from(pushKey, 'base64url') } catch { /* aşağıda hata */ }
+    if (!bytes || bytes.length !== 65 || bytes[0] !== 4 || !/^[A-Za-z0-9_-]+$/.test(pushKey)) errors.push('VITE_WEB_PUSH_PUBLIC_KEY geçerli bir VAPID genel anahtarı değil (65 bayt, base64url)')
+  }
+  return { errors, warnings: pushKey ? [] : ['VITE_WEB_PUSH_PUBLIC_KEY yok: arka plan bildirimi arayüzü kapalı kalır'] }
+}
+
+// Paket taraması: üretim projesine işaret eden adres/anahtar, anon dışı JWT veya bilinen sır varsa derleme düşer.
+export function scanBundle(files, secrets = []) {
+  const problems = []
+  for (const [name, text] of files) {
+    for (const token of text.match(/eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/g) ?? []) {
+      const claims = jwtClaims(token)
+      if (!claims || claims.role !== 'anon' || claims.ref !== STAGING_REF) problems.push(`${name}: staging anon olmayan JWT (ref=${claims?.ref}, role=${claims?.role})`)
+    }
+    for (const [, ref] of text.matchAll(/([a-z0-9]{20})\.supabase\.(?:co|in)/g)) {
+      if (ref !== STAGING_REF) problems.push(`${name}: başka Supabase projesi adresi (${ref})`)
+    }
+    // supabase-js kendi içinde "sb_secret_" önekini denetler; yalnızca gerçek anahtar biçimi aranır.
+    if (/sb_secret_[A-Za-z0-9_-]{16,}/.test(text)) problems.push(`${name}: sb_secret_ anahtarı`)
+    if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(text)) problems.push(`${name}: özel anahtar bloğu`)
+    for (const secret of secrets) if (secret && secret.length >= 16 && text.includes(secret)) problems.push(`${name}: sunucu sırrı pakette`)
+  }
+  return problems
+}
+
+export function headersFile(supabaseUrl) {
+  const host = new URL(supabaseUrl).host
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    `connect-src 'self' https://${host} wss://${host}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; ')
+  return `/*
+  X-Robots-Tag: noindex, nofollow
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: ${csp}
+
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+`
+}
+
+// GitHub Pages biçimindeki eski /waypoint/... bağlantıları (QR dahil) kök yola taşınır.
+// SPA geri dönüşü Cloudflare'in yerleşik davranışıdır: çıktıda 404.html OLMAMALIDIR.
+export const REDIRECTS = `/waypoint /  301
+/waypoint/* /:splat 301
+`
+
+export const ROBOTS = 'User-agent: *\nDisallow: /\n'
