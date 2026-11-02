@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
-import { FlaskConical, MapPin } from 'lucide-react'
+import { FlaskConical, MapPin, TriangleAlert } from 'lucide-react'
+import { orderingBlockedMessage } from '../messages'
 import { useOrderingConfig } from './useOnlineOrdering'
 import MenuPage from '../../pages/MenuPage'
 import { useQrOrdering } from './useQrOrdering'
@@ -30,6 +31,7 @@ export default function QrOrderRoute() {
         </div>
       )}
       {NOTICES[ordering.status] && <div className="qr-banner" role="status">{NOTICES[ordering.status]}</div>}
+      {ready && ordering.blocked && <div className="qr-banner qr-banner-closed" role="status"><TriangleAlert size={15} aria-hidden="true" /><span>{orderingBlockedMessage(ordering.blocked)}</span></div>}
       {ready && !ordering.demo && onlineChannels && <Link className="qr-other-channels" to="/">Paket veya kurye siparişi için genel menü</Link>}
     </>
   )

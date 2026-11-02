@@ -25,6 +25,13 @@ const ORDER_ERRORS = {
 
 export const orderErrorMessage = code => ORDER_ERRORS[code] ?? 'Sipariş kabul edilmedi. Lütfen tekrar deneyin.'
 
+// Sipariş alımı kapalıyken menü ve sepet açık kalır; gönderim sunucuda reddedilir. Müşteriye açıkça söylenir.
+const ORDERING_BLOCKED = {
+  ordering_closed: 'Sipariş sistemi geçici olarak kapalı. Menüyü inceleyip sepetinizi hazırlayabilirsiniz; şu anda sipariş gönderilemez.',
+  outside_hours: 'Şu anda çalışma saatlerimiz dışındayız. Menüyü inceleyip sepetinizi hazırlayabilirsiniz; şu anda sipariş gönderilemez.',
+}
+export const orderingBlockedMessage = code => code ? ORDERING_BLOCKED[code] ?? ORDERING_BLOCKED.ordering_closed : null
+
 const STATUS_ERRORS = {
   invalid_transition: 'Sipariş başka bir ekranda güncellenmiş. Liste yenilendi.',
   order_not_found: 'Sipariş bulunamadı. Liste yenilendi.',

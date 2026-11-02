@@ -276,3 +276,9 @@
 @keyframes qr-continue-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 .qr-continue, .qr-continue-channel { width: 100%; min-height: 54px; font-size: 1rem; }
 @media (prefers-reduced-motion: reduce) { .qr-modal-continue { animation: none; } }
+
+/* ─── Sipariş alımı geçici kapalı ─── */
+.qr-banner-closed { color: #fde7b0; background: rgba(196, 120, 60, 0.18); border-color: rgba(245, 180, 110, 0.35); font-weight: 600; }
+.qr-banner-closed svg { flex-shrink: 0; margin-top: 1px; color: #f5b46e; }
+.qr-closed-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.qr-closed-note svg { flex-shrink: 0; margin-top: 2px; }

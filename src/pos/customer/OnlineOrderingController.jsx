@@ -1,12 +1,15 @@
-import { memo, useEffect } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { memo, useEffect, useMemo } from 'react'
+import { ChevronDown, TriangleAlert } from 'lucide-react'
+import { orderingBlockedMessage } from '../messages'
 import OnlineOrderLayer from './OnlineOrderLayer'
 import { CHANNELS } from './onlineOrders'
+import { normalizeOrderingConfig } from './orderingConfig'
 import { useOnlineOrdering } from './useOnlineOrdering'
 
 // Sipariş durumunu tutar, menünün yuvalarını üst bileşene verir. memo: üst bileşenin yenilenmesi
 // bu bileşeni yenilemez, böylece onChange yalnızca sipariş durumu değişince çağrılır.
-export default memo(function OnlineOrderingController({ config, onChange }) {
+export default memo(function OnlineOrderingController({ config: raw, onChange }) {
+  const config = useMemo(() => normalizeOrderingConfig(raw), [raw])
   const ordering = useOnlineOrdering(config)
   useEffect(() => {
     onChange({
@@ -16,6 +19,7 @@ export default memo(function OnlineOrderingController({ config, onChange }) {
           {CHANNELS[ordering.channel] ?? 'Sipariş ver'}<ChevronDown size={13} aria-hidden="true" />
         </button>
       ),
+      banner: ordering.blocked ? <div className="qr-banner qr-banner-closed" role="status"><TriangleAlert size={15} aria-hidden="true" /><span>{orderingBlockedMessage(ordering.blocked)}</span></div> : null,
       layer: <OnlineOrderLayer ordering={ordering} />,
     })
   }, [ordering, onChange])

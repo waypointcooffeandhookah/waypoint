@@ -37,6 +37,7 @@ export function useQrOrdering(token) {
   const [status, setStatus] = useState('loading')
   const [attempt, setAttempt] = useState(0)
   const [tableLabel, setTableLabel] = useState(null)
+  const [blocked, setBlocked] = useState(null)
   const [catalog, setCatalog] = useState(null)
   const [backend, setBackend] = useState(null)
   const [cart, dispatch] = useReducer(cartReducer, initial.cart ?? emptyCart)
@@ -63,6 +64,7 @@ export function useQrOrdering(token) {
         setCatalog(nextCatalog)
         setBackend(next)
         setTableLabel(table.label)
+        setBlocked(table.blocked ?? null)
         setStatus('ready')
       } catch {
         if (active) setStatus('unreachable')
@@ -138,7 +140,7 @@ export function useQrOrdering(token) {
   }, [backend, pending, resume])
 
   async function submit() {
-    if (!backend || sending.current || pending || !cart.lines.length) return
+    if (blocked || !backend || sending.current || pending || !cart.lines.length) return
     sending.current = true
     const sub = {
       ...createSubmission({ tableToken: token, lines: toOrderPayloadLines(cart), note: cart.note.trim() || null }),
@@ -184,6 +186,8 @@ export function useQrOrdering(token) {
     status,
     demo: backend?.mode === 'demo',
     tableLabel,
+    // Sipariş alımı kapalı / saat dışı: sepet açık, gönderim kapalı (sunucu da reddeder).
+    blocked,
     cart,
     dispatch,
     count: cartCount(cart),

@@ -24,7 +24,8 @@ export function mapQrOrder(row) {
 
 // get_qr_table yanıtı: geçersiz kod, kurulmamış şema ve ağ hatası ayrı ele alınır.
 export function classifyTable({ data, error }) {
-  if (!error) return { state: 'ready', label: data?.table_label }
+  // Alım kapalı / saat dışı: masa doğrulanır, menü ve sepet açılır, gönderim kapalı kalır (sunucu da reddeder).
+  if (!error) return data?.blocked ? { state: 'ready', label: data?.table_label, blocked: data.blocked } : { state: 'ready', label: data?.table_label }
   if (/^pos:invalid_table/.test(error.message ?? '')) return { state: 'invalid' }
   if (/^pos:(ordering_closed|outside_hours|channel_closed)/.test(error.message ?? '')) return { state: 'unavailable' }
   if (['PGRST202', '42883', '3F000', 'PGRST205', '42P01'].includes(error.code)) return { state: 'unavailable' }

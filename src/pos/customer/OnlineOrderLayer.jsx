@@ -3,7 +3,7 @@ import { Bike, CircleCheck, ClipboardList, LoaderCircle, MapPin, QrCode, Receipt
 import { useDialog } from '../../utils/useDialog'
 import { formatCents } from '../money'
 import { orderErrorMessage } from '../messages'
-import { CartLine } from './QrOrderLayer'
+import { CartLine, ClosedNote } from './QrOrderLayer'
 import TrackingCard from './TrackingCard'
 import { CHANNELS, PAYMENT_LABELS } from './onlineOrders'
 import './onlineStyles'
@@ -19,6 +19,7 @@ function ChannelView({ ordering }) {
   const cards = CARDS.filter(card => card.key === 'dine_in' ? config.dine_in !== false : config[card.key])
   return (
     <div className="qr-sheet-body">
+      {ordering.blocked && <ClosedNote code={ordering.blocked} />}
       <p className="qr-channel-lead">Nasıl sipariş vermek istersiniz?</p>
       <div className="qr-channels">
         {cards.map(({ key, Icon, text }) => (
@@ -109,6 +110,7 @@ function CheckoutView({ ordering }) {
         <p className="qr-pay-note"><strong>{PAYMENT_LABELS[channel === 'pickup' ? 'pay_at_pickup' : 'cash_on_delivery']}.</strong> Online ödeme alınmaz; ödeme, personel tahsil edince işlenir.</p>
         <p className="qr-privacy">Ad, telefon ve adresiniz yalnızca bu siparişi hazırlamak ve teslim etmek için kullanılır; yalnızca yetkili personel görür, mutfak ekranında gösterilmez.</p>
 
+        {ordering.blocked && <ClosedNote code={ordering.blocked} />}
         {submitState === 'rejected' && <p className="pos-alert qr-rejected" role="alert"><TriangleAlert size={16} aria-hidden="true" /> {orderErrorMessage(rejectCode)}</p>}
         {submitState === 'uncertain' && (
           <div className="pos-alert pos-alert-warn qr-uncertain" role="alert">
@@ -124,10 +126,10 @@ function CheckoutView({ ordering }) {
           {channel === 'delivery' && <div className="qr-fee"><dt>Teslimat ücreti</dt><dd>{summary.feeCents === null ? 'Adres doğrulanınca' : formatCents(summary.feeCents)}</dd></div>}
           <div className="qr-total"><dt>Toplam</dt><dd><strong>{summary.totalCents === null ? '—' : formatCents(summary.totalCents)}</strong></dd></div>
         </dl>
-        <button type="button" className="pos-btn pos-btn-primary qr-send" onClick={ordering.submit} disabled={locked || !summary.ready}>
+        <button type="button" className="pos-btn pos-btn-primary qr-send" onClick={ordering.submit} disabled={locked || !summary.ready || Boolean(ordering.blocked)}>
           {submitState === 'sending'
             ? <><LoaderCircle size={20} className="pos-spin" aria-hidden="true" /> Gönderiliyor…</>
-            : <><Send size={19} aria-hidden="true" /> Sipariş Ver</>}
+            : ordering.blocked ? 'Sipariş alımı kapalı' : <><Send size={19} aria-hidden="true" /> Sipariş Ver</>}
         </button>
       </div>
     </>

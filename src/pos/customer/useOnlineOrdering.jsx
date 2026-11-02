@@ -9,6 +9,7 @@ import { createSubmission, reconcileOrder, submitOrder } from '../orderSubmissio
 import { checkDeliveryAddress, getOrderTracking, getOrderingConfig, onlineOrderTransport } from '../posApi'
 import { useOrderSync } from '../useOrderSync'
 import OrderControl from './OrderControl'
+import { normalizeOrderingConfig } from './orderingConfig'
 import { checkoutSummary, emptyForm, loadOnboarding, loadOnlineState, mapOnlineOrder, mapTracking, saveOnboarding, saveOnlineState, toOnlinePayload, validateCheckout } from './onlineOrders'
 
 const POLL_MS = 15000
@@ -20,7 +21,7 @@ export function useOrderingConfig() {
   useEffect(() => {
     let active = true
     // RPC yoksa (migration uygulanmamış) sipariş arayüzü hiç görünmez.
-    getOrderingConfig().then(({ data, error }) => { if (active && !error && (data?.pickup || data?.delivery)) setConfig(data) }, () => {})
+    getOrderingConfig().then(({ data, error }) => { if (active && !error) setConfig(normalizeOrderingConfig(data)) }, () => {})
     return () => { active = false }
   }, [])
   return config
@@ -49,6 +50,8 @@ export function useOnlineOrdering(config) {
     return channel === 'dine_in' || config[channel] ? channel : null
   }, [config, channel])
   const orderingChannel = usable === 'pickup' || usable === 'delivery' ? usable : null
+  // Sipariş alımı kapalı / saat dışı: kanal ve sepet görünür, gönderim kapalı (sunucu da reddeder).
+  const blocked = config?.blocked ?? null
 
   // Her ziyarette bir kez sorulur. Pencere burada yalnızca istenir; menü, tanıtım ve ürün penceresi
   // kapanmadan göstermez. Müşteri yanıtlayınca bu ziyarette yenilemede de açılmaz.
@@ -169,7 +172,7 @@ export function useOnlineOrdering(config) {
   const summary = checkoutSummary(orderingChannel, subtotalCents, quote)
 
   async function submit() {
-    if (sending.current || pending || !orderingChannel || !cart.lines.length) return
+    if (blocked || sending.current || pending || !orderingChannel || !cart.lines.length) return
     const nextErrors = validateCheckout(orderingChannel, form)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length || !summary.ready) return
@@ -188,6 +191,7 @@ export function useOnlineOrdering(config) {
 
   return {
     config,
+    blocked,
     channel: usable,
     selectChannel(next) {
       if (locked) return

@@ -2,9 +2,14 @@ import { useState } from 'react'
 import { Check, CircleCheck, ClipboardList, LoaderCircle, Minus, Pencil, Plus, Receipt, Send, ShoppingBag, TriangleAlert, X } from 'lucide-react'
 import { useDialog } from '../../utils/useDialog'
 import { estimateTotalCents, formatCents } from '../money'
-import { formatClock, orderErrorMessage } from '../messages'
+import { formatClock, orderErrorMessage, orderingBlockedMessage } from '../messages'
 import { MAX_QUANTITY } from '../cart'
 import { CUSTOMER_STATUS, STATUS_STEPS } from './qrOrders'
+
+// Sipariş alımı kapalı / saat dışı uyarısı (masa, paket ve kurye sepetinde ortak).
+export function ClosedNote({ code }) {
+  return <p className="pos-alert pos-alert-warn qr-closed-note" role="status"><TriangleAlert size={16} aria-hidden="true" /> {orderingBlockedMessage(code)}</p>
+}
 
 export function CartLine({ line, locked, dispatch }) {
   const [editing, setEditing] = useState(Boolean(line.note))
@@ -58,6 +63,7 @@ function CartView({ ordering }) {
         <textarea id="qr-order-note" className="input qr-order-note" rows={2} maxLength={300} value={cart.note} disabled={locked}
           placeholder="Tüm sipariş için not (isteğe bağlı)" onChange={event => dispatch({ type: 'setNote', note: event.target.value })} />
 
+        {ordering.blocked && <ClosedNote code={ordering.blocked} />}
         {submitState === 'rejected' && (
           <p className="pos-alert qr-rejected" role="alert"><TriangleAlert size={16} aria-hidden="true" /> {orderErrorMessage(rejectCode)}</p>
         )}
@@ -74,10 +80,10 @@ function CartView({ ordering }) {
           <span>{count} ürün · tahmini toplam</span>
           <strong>{formatCents(estimateTotalCents(cart.lines))}</strong>
         </div>
-        <button type="button" className="pos-btn pos-btn-primary qr-send" onClick={ordering.submit} disabled={locked}>
+        <button type="button" className="pos-btn pos-btn-primary qr-send" onClick={ordering.submit} disabled={locked || Boolean(ordering.blocked)}>
           {submitState === 'sending'
             ? <><LoaderCircle size={20} className="pos-spin" aria-hidden="true" /> Gönderiliyor…</>
-            : <><Send size={19} aria-hidden="true" /> Sipariş Ver</>}
+            : ordering.blocked ? 'Sipariş alımı kapalı' : <><Send size={19} aria-hidden="true" /> Sipariş Ver</>}
         </button>
       </div>
     </>
