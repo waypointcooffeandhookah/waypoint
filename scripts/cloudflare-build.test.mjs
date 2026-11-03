@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PRODUCTION_REF, STAGING_REF } from '../src/supabaseTarget.js'
-import { REDIRECTS, checkBranch, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
+import { REDIRECTS, SPA_FALLBACK, checkBranch, detectHost, redirectsFor, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
 
 const jwt = claims => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2lnbmF0dXJl`
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`
@@ -14,6 +14,25 @@ test('dal: Cloudflare üzerinde yalnızca feature/restaurant-pos derlenir', () =
   assert.equal(checkBranch({ CF_PAGES: '1', CF_PAGES_BRANCH: 'feature/restaurant-pos' }).ok, true)
   for (const branch of ['main', 'feature/other', '']) assert.equal(checkBranch({ CF_PAGES: '1', CF_PAGES_BRANCH: branch }).ok, false, branch)
   assert.equal(checkBranch({}).ok, true)
+})
+
+test('dal: Netlify üzerinde yalnızca feature/restaurant-pos production/branch-deploy derlenir; PR önizlemesi reddedilir', () => {
+  const netlify = (BRANCH, CONTEXT = 'production') => checkBranch({ NETLIFY: 'true', BRANCH, CONTEXT })
+  assert.deepEqual(netlify('feature/restaurant-pos'), { ok: true, host: 'netlify' })
+  assert.equal(netlify('feature/restaurant-pos', 'branch-deploy').ok, true)
+  for (const branch of ['main', 'feature/other', '', undefined]) assert.equal(netlify(branch).ok, false, String(branch))
+  for (const context of ['deploy-preview', 'dev', null]) assert.match(netlify('feature/restaurant-pos', context).error ?? '', /bağlamı derlenmez/, String(context))
+  assert.deepEqual([detectHost({ NETLIFY: 'true' }), detectHost({ CF_PAGES: '1' }), detectHost({})], ['netlify', 'cloudflare', 'local'])
+})
+
+test('yönlendirmeler: Netlify ve yerelde SPA yeniden yazımı eski /waypoint kurallarından SONRA gelir; Cloudflare’da yok', () => {
+  for (const host of ['netlify', 'local']) {
+    const rules = redirectsFor(host).trim().split('\n')
+    assert.equal(rules.at(-1), SPA_FALLBACK.trim(), host)
+    assert.ok(rules.indexOf('/waypoint/* /:splat 301') < rules.length - 1)
+  }
+  assert.equal(redirectsFor('cloudflare'), REDIRECTS)
+  assert.ok(!redirectsFor('cloudflare').includes('/index.html'))
 })
 
 test('ortam: doğru staging ayarı geçer; eksik/üretim/servis anahtarı derlemeyi durdurur', () => {

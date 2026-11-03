@@ -1,0 +1,10 @@
+# Netlify STAGING sitesi (waypointcoffeandhookah.netlify.app). Yalnızca feature/restaurant-pos dalı;
+# derleme betiği başka dalı ve PR önizlemelerini reddeder, üretim Supabase'ini ve sırları engeller.
+# Ortam değişkenleri Netlify arayüzünde: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_WEB_PUSH_PUBLIC_KEY.
+# Güvenlik başlıkları ve yönlendirmeler derlemede dist-staging/_headers ve _redirects olarak üretilir.
+[build]
+  command = "npm run build:netlify"
+  publish = "dist-staging"
+
+[build.environment]
+  NODE_VERSION = "22"

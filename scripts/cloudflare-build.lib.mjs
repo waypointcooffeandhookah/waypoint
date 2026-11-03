@@ -1,4 +1,4 @@
-// Cloudflare Pages staging derlemesinin saf denetimleri (scripts/cloudflare-build.mjs kullanır, testler doğrular).
+// Staging derlemesinin saf denetimleri (Netlify ve Cloudflare Pages; scripts/cloudflare-build.mjs kullanır, testler doğrular).
 import { STAGING_REF, resolveSupabaseTarget } from '../src/supabaseTarget.js'
 
 export const STAGING_BRANCH = 'feature/restaurant-pos'
@@ -15,11 +15,24 @@ function jwtClaims(token) {
   }
 }
 
+// Derlemeyi yapan barındırma: Netlify NETLIFY=true, Cloudflare Pages CF_PAGES=1 tanımlar.
+export function detectHost(env) {
+  if (env.NETLIFY === 'true') return 'netlify'
+  if (env.CF_PAGES === '1') return 'cloudflare'
+  return 'local'
+}
+
+// Başka dal staging'e yayınlanamaz. Netlify'da PR önizlemeleri (deploy-preview) de reddedilir:
+// herkese açık ikinci bir adres aynı staging veritabanına bağlanmasın.
 export function checkBranch(env) {
-  // Cloudflare derlemesinde CF_PAGES=1 ve CF_PAGES_BRANCH tanımlıdır. Başka dal staging'e yayınlanamaz.
-  if (env.CF_PAGES !== '1') return { ok: true, note: 'yerel derleme (Cloudflare dışı): dal denetimi atlandı' }
-  if (env.CF_PAGES_BRANCH !== STAGING_BRANCH) return { ok: false, error: `yalnızca ${STAGING_BRANCH} dalı derlenir (gelen: ${env.CF_PAGES_BRANCH || 'yok'})` }
-  return { ok: true }
+  const host = detectHost(env)
+  if (host === 'local') return { ok: true, host, note: 'yerel derleme: dal denetimi atlandı' }
+  const branch = host === 'netlify' ? env.BRANCH : env.CF_PAGES_BRANCH
+  if (branch !== STAGING_BRANCH) return { ok: false, host, error: `yalnızca ${STAGING_BRANCH} dalı derlenir (gelen: ${branch || 'yok'})` }
+  if (host === 'netlify' && !['production', 'branch-deploy'].includes(env.CONTEXT)) {
+    return { ok: false, host, error: `Netlify ${env.CONTEXT || 'bilinmeyen'} bağlamı derlenmez (yalnızca production / branch-deploy)` }
+  }
+  return { ok: true, host }
 }
 
 // viteEnv: Vite'ın staging modunda göreceği VITE_* değerleri (loadEnv), processEnv: tüm derleme ortamı.
@@ -104,9 +117,13 @@ export function headersFile(supabaseUrl) {
 }
 
 // GitHub Pages biçimindeki eski /waypoint/... bağlantıları (QR dahil) kök yola taşınır.
-// SPA geri dönüşü Cloudflare'in yerleşik davranışıdır: çıktıda 404.html OLMAMALIDIR.
+// Çıktıda 404.html OLMAMALIDIR. Cloudflare'de SPA geri dönüşü yerleşiktir (/* kuralı döngü uyarısı verir);
+// Netlify'da (ve yerelde) /garson, /masa/... yenilenince index.html'e yeniden yazılmalıdır.
+// Netlify gölgelemez: gerçek dosya (sw.js, assets) varsa kural uygulanmaz.
 export const REDIRECTS = `/waypoint /  301
 /waypoint/* /:splat 301
 `
+export const SPA_FALLBACK = '/* /index.html 200\n'
+export const redirectsFor = host => host === 'cloudflare' ? REDIRECTS : REDIRECTS + SPA_FALLBACK
 
 export const ROBOTS = 'User-agent: *\nDisallow: /\n'

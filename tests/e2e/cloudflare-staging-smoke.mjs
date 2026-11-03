@@ -1,8 +1,8 @@
-// Cloudflare Pages staging paketinin yerel duman testi (npm run test:cloudflare:smoke).
-// Önce: npm run build:cloudflare. dist-staging/ klasörünü Cloudflare Pages davranışını taklit eden
-// küçük bir sunucuyla yayınlar (_headers + _redirects + 404.html yokken SPA geri dönüşü) ve başsız
+// Staging paketinin yerel duman testi (npm run test:netlify:smoke).
+// Önce: npm run build:netlify. dist-staging/ klasörünü Netlify davranışını taklit eden küçük bir sunucuyla
+// yayınlar (_headers + _redirects; örtük SPA geri dönüşü YOK, yalnızca _redirects kuralı) ve başsız
 // Chrome'da açar: CSP ihlali, JS hatası, yönlendirme ve service worker kaydı denetlenir.
-// Bu, Cloudflare'in kendisi DEĞİLDİR; gerçek dağıtımdan sonra aynı kontroller canlı adreste tekrarlanmalıdır.
+// Bu, Netlify'ın kendisi DEĞİLDİR; gerçek dağıtımdan sonra aynı kontroller canlı adreste tekrarlanmalıdır.
 import { spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
@@ -11,12 +11,25 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const OUT = fileURLToPath(new URL('../../dist-staging/', import.meta.url))
-if (!existsSync(join(OUT, 'index.html'))) { console.error('Önce: npm run build:cloudflare'); process.exit(2) }
+if (!existsSync(join(OUT, 'index.html'))) { console.error('Önce: npm run build:netlify'); process.exit(2) }
 const BROWSER = [process.env.E2E_BROWSER, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/usr/bin/google-chrome']
   .find(path => path && existsSync(path))
 if (!BROWSER) { console.error('Chrome veya Edge bulunamadı.'); process.exit(2) }
 
-// ── Cloudflare Pages taklidi ───────────────────────────────────
+// ── Netlify taklidi ────────────────────────────────────────────
+// _redirects: ilk eşleşen kural; 200 yeniden yazım gerçek dosyayı gölgelemez; kural yoksa 404.
+const redirectRules = readFileSync(join(OUT, '_redirects'), 'utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'))
+  .map(line => { const [from, to, status] = line.split(/\s+/); return { from, to, status: Number(status) } })
+function applyRedirect(path) {
+  for (const rule of redirectRules) {
+    const splat = rule.from.endsWith('/*') ? rule.from.slice(0, -1) : null
+    if (splat ? !path.startsWith(splat) : path !== rule.from) continue
+    const to = rule.to.replace(':splat', splat ? path.slice(splat.length) : '')
+    if (rule.status === 200 && existsSync(join(OUT, path)) && !statSync(join(OUT, path)).isDirectory()) return null
+    return { to, status: rule.status }
+  }
+  return null
+}
 function parseHeaders(text) {
   const rules = []
   let current = null
@@ -34,14 +47,15 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 
 const server = createServer((req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-  if (path === '/waypoint' || path.startsWith('/waypoint/')) {
-    res.writeHead(301, { Location: path.slice('/waypoint'.length) || '/' })
+  const redirect = applyRedirect(path)
+  if (redirect && redirect.status !== 200) {
+    res.writeHead(redirect.status, { Location: redirect.to })
     return res.end()
   }
-  let file = normalize(join(OUT, path))
+  let served = redirect ? redirect.to : path === '/' ? '/index.html' : path
+  let file = normalize(join(OUT, served))
   if (!file.startsWith(normalize(OUT))) { res.writeHead(400); return res.end() }
-  let served = path
-  if (!existsSync(file) || statSync(file).isDirectory()) { file = join(OUT, 'index.html'); served = '/index.html' }
+  if (!existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not Found') }
   const headers = { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' }
   for (const rule of headerRules) if (matches(rule.pattern, path) || matches(rule.pattern, served)) Object.assign(headers, rule.headers)
   res.writeHead(200, headers)
@@ -95,6 +109,12 @@ check(await visit('/') === '/', 'kök menü açılır')
 check(await visit('/waypoint/garson') === '/garson', 'eski /waypoint/garson bağlantısı /garson adresine taşınır')
 check(await visit('/masa/ornek-qr-anahtari') === '/masa/ornek-qr-anahtari', 'derin bağlantı (QR masa yolu) SPA geri dönüşüyle açılır')
 check(await visit('/mutfak') === '/mutfak', 'mutfak ekranı yolu açılır')
+// Netlify: her uygulama yolu sayfa yenilemede (doğrudan istek) index.html ile 200 dönmeli.
+for (const path of ['/garson', '/garson/masa/1', '/mutfak', '/admin', '/admin/login', '/masa/ornek', '/siparisler', '/siparis/ornek']) {
+  const response = await fetch(`${ORIGIN}${path}`)
+  check(response.status === 200 && (await response.text()).includes('<div id="root">'), `yenileme: ${path} → 200 index.html`)
+}
+check((await fetch(`${ORIGIN}/sw.js`).then(r => r.text())).includes('push'), 'sw.js yeniden yazıma takılmaz (gerçek dosya)')
 const staffLogin = await evaluate("!!document.querySelector('input[type=password]')")
 await visit('/garson')
 check(staffLogin !== undefined && await evaluate("!!document.querySelector('input[type=password]')"), 'garson paneli personel girişi ister')
@@ -122,5 +142,5 @@ server.close()
 await sleep(300)
 try { rmSync(temp, { recursive: true, force: true }) } catch { /* Chrome dosyayı bırakmamış olabilir. */ }
 const failed = checks.filter(([ok]) => !ok).length
-console.log(failed ? `\n✖ ${failed} denetim başarısız` : '\n✔ Tüm duman denetimleri geçti (yerel Cloudflare taklidi)')
+console.log(failed ? `\n✖ ${failed} denetim başarısız` : '\n✔ Tüm duman denetimleri geçti (yerel Netlify taklidi)')
 process.exit(failed ? 1 : 0)

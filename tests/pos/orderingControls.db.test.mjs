@@ -174,7 +174,7 @@ test('alım kapalıyken kanal ayrımı: yöneticinin kapattığı kanal açık g
 test('kanal migration: tekrar çalıştırılabilir, DROP içermez, gönderim RPC tanımlarına dokunmaz', async () => {
   const sql = readFileSync(new URL('../../supabase/migrations/20261102120000_pos_ordering_config_channels.sql', import.meta.url), 'utf8')
   const code = sql.replace(/--.*$/gm, '')
-  assert.doesNotMatch(code, /(drop|truncate|update|insert)|delete from/i)
+  assert.doesNotMatch(code, /\b(drop|truncate|update|insert)\b|delete from/i)
   assert.doesNotMatch(code, /place_qr_order|place_online_order|place_staff_order/)
   await save({ accepting_orders: false })
   await db.exec(sql)

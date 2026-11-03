@@ -1,21 +1,22 @@
-// Cloudflare Pages STAGING derlemesi:  npm run build:cloudflare
+// STAGING derlemesi (Netlify: npm run build:netlify · Cloudflare Pages: npm run build:cloudflare — aynı betik)
 // 1) Dal ve ortam denetimi (yanlış dal / üretim Supabase / sır varsa derleme DÜŞER, sessizce devam etmez)
 // 2) vite build --mode staging --base=/  → dist-staging/
-// 3) 404.html kaldırılır (Cloudflare SPA geri dönüşü), _headers/_redirects/robots.txt yazılır
+// 3) 404.html kaldırılır, _headers/_redirects/robots.txt yazılır (Netlify'da SPA yeniden yazımı eklenir)
 // 4) Çıktı paketi taranır: yalnızca staging anon/publishable anahtar, sır yok
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadEnv } from 'vite'
-import { OUT_DIR, REDIRECTS, ROBOTS, checkBranch, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
+import { OUT_DIR, ROBOTS, redirectsFor, checkBranch, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
 
 const rootPath = fileURLToPath(new URL('../', import.meta.url))
-const fail = message => { console.error(`\n✖ Cloudflare staging derlemesi durduruldu: ${message}\n`); process.exit(1) }
+const fail = message => { console.error(`\n✖ Staging derlemesi durduruldu: ${message}\n`); process.exit(1) }
 
 const branch = checkBranch(process.env)
 if (!branch.ok) fail(branch.error)
 if (branch.note) console.log(`ℹ ${branch.note}`)
+console.log(`ℹ barındırma: ${branch.host}`)
 
 const viteEnv = loadEnv('staging', rootPath, 'VITE_')
 const { errors, warnings } = checkBuildEnv(viteEnv, process.env)
@@ -30,7 +31,7 @@ execFileSync(process.execPath, [join(rootPath, 'node_modules/vite/bin/vite.js'),
 // public/404.html GitHub Pages içindir (eski, sabit hash'li dosya adları taşır); Cloudflare'de SPA geri dönüşünü kapatır.
 rmSync(join(out, '404.html'), { force: true })
 writeFileSync(join(out, '_headers'), headersFile(viteEnv.VITE_SUPABASE_URL))
-writeFileSync(join(out, '_redirects'), REDIRECTS)
+writeFileSync(join(out, '_redirects'), redirectsFor(branch.host))
 writeFileSync(join(out, 'robots.txt'), ROBOTS)
 
 const walk = dir => readdirSync(dir).flatMap(name => {
@@ -61,6 +62,7 @@ for (const [ok, what] of [
   [existsSync(join(out, 'sw.js')), 'sw.js var'],
   [index.includes('manifest.webmanifest'), 'manifest bağlantısı var'],
   [index.includes('src="/assets/'), 'varlıklar kök yoldan (/assets/) yükleniyor'],
+  [branch.host === 'cloudflare' || readFileSync(join(out, '_redirects'), 'utf8').includes('/* /index.html 200'), 'SPA yeniden yazımı (_redirects) var'],
 ]) if (!ok) fail(`çıktı denetimi: ${what} değil`)
 
 console.log(`\n✔ Staging paketi hazır: ${OUT_DIR}/ (${files.length} dosya tarandı, sorun yok)`)
