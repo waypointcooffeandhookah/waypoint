@@ -21,6 +21,7 @@
     "test:e2e:admin": "node tests/e2e/admin-flow.mjs",
     "test:cloudflare:smoke": "node tests/e2e/cloudflare-staging-smoke.mjs",
     "test:netlify:smoke": "node tests/e2e/cloudflare-staging-smoke.mjs",
+    "test:staging:controlled": "node scripts/staging-controlled-test.mjs",
     "staging:menu": "node scripts/staging-import-menu.mjs",
     "staging:staff": "node scripts/staging-create-staff.mjs",
     "push:keys": "node scripts/generate-push-keys.mjs"

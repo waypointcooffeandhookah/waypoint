@@ -1,5 +1,7 @@
 # Cloudflare Pages staging — dağıtım kontrol listesi
 
+> Güncel staging barındırması **Netlify**: bkz. `docs/NETLIFY_STAGING.md` ve `docs/STAGING_TEST_PLAN.md`. Supabase Web Push adımları (§4) ve fiziksel cihaz testleri (§6) Netlify için de geçerlidir.
+
 Yalnızca **staging** içindir (Supabase `jnnjijmdzcjglclcnwtm`). GitHub Pages üretim menüsü (`main`,
 `.github/workflows/deploy.yml`) ve üretim Supabase projesi bu süreçte değişmez.
 

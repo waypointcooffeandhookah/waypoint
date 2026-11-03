@@ -144,6 +144,7 @@ test('migration tekrar çalıştırılabilir, DROP içermez, ayarları korur', a
   assert.equal((await config()).blocked, 'ordering_closed')
   // Sonraki migration okuma RPC'lerini yeniler; gerçek sıradaki gibi yeniden uygulanır.
   await db.exec(readFileSync(new URL('../../supabase/migrations/20261102120000_pos_ordering_config_channels.sql', import.meta.url), 'utf8'))
+  await db.exec(readFileSync(new URL('../../supabase/migrations/20261102150000_pos_ordering_window.sql', import.meta.url), 'utf8'))
   await save({})
 })
 

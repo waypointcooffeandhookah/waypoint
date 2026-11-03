@@ -39,6 +39,7 @@ export async function createDb() {
   await db.exec(read('supabase/migrations/20261101090000_pos_multichannel.sql'))
   await db.exec(read('supabase/migrations/20261101120000_pos_ordering_controls.sql'))
   await db.exec(read('supabase/migrations/20261102120000_pos_ordering_config_channels.sql'))
+  await db.exec(read('supabase/migrations/20261102150000_pos_ordering_window.sql'))
   await db.exec(read('supabase/migrations/20261103090000_pos_web_push.sql'))
   // Mevcut kurulum betiği menü tablolarını Supabase varsayılan yetkileriyle bıraktığı için
   // testte de okumayı açıyoruz (supabase_security.sql ile aynı).
