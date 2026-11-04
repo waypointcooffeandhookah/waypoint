@@ -32,7 +32,9 @@ E2E_BASE=https://waypointcoffeandhookah.netlify.app npm run test:staging:control
 |---|---|
 | Sır | Bu bilgisayarda 256 bit rastgele üretilir; yalnızca bellekte; ekrana, diske, GitHub'a, pakete yazılmaz |
 | Yetki | Yönetici oturumuyla sunucuya yalnızca SHA-256 özeti kaydedilir; en fazla 60 dk; denetim kaydı |
-| API testi | Yetkisiz isteğin reddi → masa QR + paket + kurye siparişi → tekrar gönderim → bölge dışı adres reddi |
+| API testi | Yetkisiz isteğin reddi → masa QR (Masa 9) + paket + kurye siparişi → tekrar gönderim, bölge dışı adres ve tükenen ürün reddi |
+| İşleme (gerçek personel hesapları) | Mutfak hazırlanıyor → hazır; garson servis; adisyon bakiyesi, fazla ödeme reddi, kart ödemesi (tekrarında çift kayıt yok), masa kapanışı; paket teslim + nakit; kurye adı zorunlu → kuryeye verildi → teslim + kapıda ödeme; müşteri takip sayfası; rol yetkileri |
+| Masa temizliği | Masa 9, 5 ve 6 test öncesi/sonrası normal personel yoluyla kapatılır (servis/gerekçeli iptal, ödeme, kapanış; veri silinmez). Diğer masalara dokunulmaz |
 | Tarayıcı testi | Gerçek Netlify arayüzü; başlık test tarayıcısında yalnızca `*.supabase.co/rest/v1/` isteklerine eklenir |
 | Bitiş (her durumda) | `revoke_ordering_test_grants`; ardından hem yetkisiz hem eski sırla gönderimin reddedildiği doğrulanır |
 

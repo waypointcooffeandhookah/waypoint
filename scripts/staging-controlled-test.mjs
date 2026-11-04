@@ -15,6 +15,11 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { PRODUCTION_REF, STAGING_REF } from '../src/supabaseTarget.js'
+import { closeTestTable } from '../tests/e2e/tableCleanup.mjs'
+
+// API testinin masası; tarayıcı testleri Masa 5 ve Masa 6'yı kullanır. Diğer masalara dokunulmaz.
+const API_TABLE = 'Masa 9'
+const SOLD_OUT_ITEM = '5e000000-0000-4000-8000-000000000302' // staging örnek ürünü "Tükenmiş Tatlı" (is_available=false)
 
 const HEADER = 'x-waypoint-test-grant'
 const args = process.argv.slice(2)
@@ -30,7 +35,8 @@ const env = Object.fromEntries(readFileSync(new URL('.env.staging.local', root),
   .map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1).trim()]))
 if (!env.VITE_SUPABASE_URL?.includes(STAGING_REF) || env.VITE_SUPABASE_URL.includes(PRODUCTION_REF)) { console.error('✖ Hedef staging projesi değil; durduruldu.'); process.exit(2) }
 const creds = JSON.parse(readFileSync(new URL('.staging-credentials.local', root), 'utf8'))
-const tableToken = Object.values(JSON.parse(readFileSync(new URL('.staging-qr.local', root), 'utf8')))[0]
+const tableToken = JSON.parse(readFileSync(new URL('.staging-qr.local', root), 'utf8'))[API_TABLE]
+if (!tableToken) { console.error(`✖ ${API_TABLE} QR kodu .staging-qr.local içinde yok`); process.exit(2) }
 
 const options = { auth: { persistSession: false, autoRefreshToken: false } }
 const secret = randomBytes(32).toString('base64url')
@@ -40,6 +46,12 @@ const admin = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, op
 const results = []
 const check = (ok, label) => { results.push(Boolean(ok)); console.log(`${ok ? '✔' : '✖'} ${label}`) }
 const code = ({ error }) => /pos:([a-z_]+)/.exec(error?.message ?? '')?.[1] ?? error?.message ?? null
+async function staffClient(user) {
+  const db = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, options)
+  const { error } = await db.auth.signInWithPassword(user)
+  if (error) throw new Error(`personel girişi: ${error.message}`)
+  return db
+}
 const probe = client => client.rpc('place_online_order', { p_fulfillment_type: 'pickup', p_idempotency_key: randomUUID(),
   p_items: [{ menu_item_id: '00000000-0000-0000-0000-000000000000', quantity: 1 }], p_customer: { name: 'Kapali Denetimi', phone: '05550000099' } })
 
@@ -84,6 +96,8 @@ try {
 
   check(code(await probe(anon)) === 'ordering_closed', 'yetkisiz ziyaretçi hâlâ reddediliyor')
   check((await tester.rpc('get_ordering_config')).data?.accepting === true, 'yetkili istemci alımı açık görüyor')
+  // API masası temiz başlar (önceki çalıştırma yarıda kaldıysa normal yoldan kapatılır; veri silinmez).
+  console.log(`ℹ ön temizlik ${API_TABLE}: ${JSON.stringify(await closeTestTable(admin, API_TABLE))}`)
 
   const { data: product } = await anon.from('menu_items').select('id, price').gt('price', 0).eq('is_available', true).order('price', { ascending: false }).limit(1).single()
   const lines = [{ menu_item_id: product.id, quantity: 2 }]
@@ -102,6 +116,57 @@ try {
   const outside = await tester.rpc('place_online_order', { p_fulfillment_type: 'delivery', p_idempotency_key: randomUUID(), p_items: lines, p_customer: customer,
     p_address: { street: 'Kurgusal Test Sokak 1', district: 'Bolge Disi', postal_code: '00000' } })
   check(code(outside) === 'out_of_area', `bölge dışı adres yetkiyle de reddedildi (${code(outside)})`)
+  const soldOut = await tester.rpc('place_online_order', { p_fulfillment_type: 'pickup', p_idempotency_key: randomUUID(),
+    p_items: [{ menu_item_id: SOLD_OUT_ITEM, quantity: 1 }], p_customer: customer })
+  check(code(soldOut) === 'item_unavailable', `stok: tükenen ürün yetkiyle de reddedildi (${code(soldOut)})`)
+
+  // ── Uçtan uca işleme: gerçek mutfak/garson hesaplarıyla mutfak → servis/teslimat → ödeme → kapanış ──
+  const kitchen = await staffClient(creds.kitchen)
+  const waiter = await staffClient(creds.waiter)
+  const ids = [qr, pickup, delivery].map(o => o.data.order_id)
+  const status = async (db, id, next, reason = null) => code(await db.rpc('update_order_status', { p_order_id: id, p_status: next, p_reason: reason }))
+  const seen = (await kitchen.from('orders').select('id').in('id', ids)).data ?? []
+  check(seen.length === 3, `mutfak hesabı üç siparişi görüyor (${seen.length}/3)`)
+  check(await status(waiter, qr.data.order_id, 'preparing') === 'forbidden', 'yetki: garson siparişi "hazırlanıyor" yapamaz')
+  const kitchenErrors = []
+  for (const id of ids) for (const next of ['preparing', 'ready']) { const failure = await status(kitchen, id, next); if (failure) kitchenErrors.push(`${next}: ${failure}`) }
+  check(!kitchenErrors.length, `mutfak: üç sipariş hazırlanıyor → hazır ${kitchenErrors.join(', ')}`)
+
+  check(!(await status(waiter, qr.data.order_id, 'served')), 'garson: masa siparişi servis edildi')
+  const { data: qrRow } = await admin.from('orders').select('bill_id, session_id').eq('id', qr.data.order_id).single()
+  const balance = async () => Number((await admin.from('bill_summaries').select('balance_cents').eq('bill_id', qrRow.bill_id).single()).data?.balance_cents)
+  const due = await balance()
+  check(due === Number(qr.data.subtotal_cents), `adisyon: bakiye sipariş tutarına eşit (${due} = ${qr.data.subtotal_cents} kuruş)`)
+  const kitchenPay = await kitchen.rpc('record_payment', { p_bill_id: qrRow.bill_id, p_amount_cents: due, p_method: 'card', p_idempotency_key: randomUUID() })
+  check(Boolean(kitchenPay.error), `yetki: mutfak ödeme alamaz (${code(kitchenPay)})`)
+  const over = await waiter.rpc('record_payment', { p_bill_id: qrRow.bill_id, p_amount_cents: due + 100, p_method: 'card', p_idempotency_key: randomUUID() })
+  check(code(over) === 'overpayment', `ödeme: bakiyeden fazlası reddedildi (${code(over)})`)
+  const payKey = randomUUID()
+  const paid = await waiter.rpc('record_payment', { p_bill_id: qrRow.bill_id, p_amount_cents: due, p_method: 'card', p_idempotency_key: payKey, p_note: 'KONTROLLU STAGING TESTI' })
+  const paidAgain = await waiter.rpc('record_payment', { p_bill_id: qrRow.bill_id, p_amount_cents: due, p_method: 'card', p_idempotency_key: payKey })
+  check(!paid.error && !paidAgain.error && await balance() === 0, `ödeme: garson kartla ödedi, aynı anahtarla tekrar ödeme çift kayıt üretmedi (bakiye ${await balance()})`)
+  const closed = await waiter.rpc('close_table_session', { p_session_id: qrRow.session_id })
+  check(!closed.error, `adisyon kapatıldı (${API_TABLE}) ${closed.error ? code(closed) : ''}`)
+
+  const fulfill = (db, id, next, courier = null) => db.rpc('update_fulfillment_status', { p_order_id: id, p_status: next, p_courier_name: courier })
+  check(code(await fulfill(waiter, pickup.data.order_id, 'collected')) === 'forbidden', 'yetki: garson paket teslimini işaretleyemez')
+  const collected = await fulfill(admin, pickup.data.order_id, 'collected')
+  const pickupPaid = await admin.rpc('record_fulfillment_payment', { p_order_id: pickup.data.order_id, p_method: 'cash' })
+  check(!collected.error && !pickupPaid.error, `paket: hazır → müşteri teslim aldı → nakit ödeme ${code(collected) ?? ''} ${code(pickupPaid) ?? ''}`)
+  const noCourier = await fulfill(admin, delivery.data.order_id, 'handed_to_courier')
+  check(code(noCourier) === 'courier_required', `kurye: kurye adı olmadan yola çıkarılamaz (${code(noCourier)})`)
+  const handed = await fulfill(admin, delivery.data.order_id, 'handed_to_courier', 'Test Kurye')
+  const delivered = await fulfill(admin, delivery.data.order_id, 'delivered')
+  const deliveryPaid = await admin.rpc('record_fulfillment_payment', { p_order_id: delivery.data.order_id, p_method: 'cash' })
+  check(!handed.error && !delivered.error && !deliveryPaid.error, `kurye: hazır → kuryeye verildi → teslim edildi → kapıda ödeme ${[handed, delivered, deliveryPaid].map(code).filter(Boolean).join(' ')}`)
+  const final = (await admin.from('orders').select('order_number, status').in('id', ids).order('order_number')).data ?? []
+  check(final.length === 3 && final.every(o => o.status === 'served'), `son durum: ${final.map(o => `#${o.order_number} ${o.status}`).join(', ')}`)
+  const tracked = await anon.rpc('get_order_tracking', { p_tracking_token: delivery.data.tracking_token })
+  check(!tracked.error && JSON.stringify(tracked.data).includes('delivered'), 'müşteri takip sayfası "teslim edildi" görüyor')
+  await kitchen.auth.signOut(); await waiter.auth.signOut()
+
+  // Tarayıcı testleri Masa 5/6'da sıfırdan başlamalı: önceki çalıştırmalardan kalanlar normal yoldan kapatılır.
+  for (const label of ['Masa 5', 'Masa 6']) console.log(`ℹ ön temizlik ${label}: ${JSON.stringify(await closeTestTable(admin, label))}`)
 
   for (const name of e2e) {
     console.log(`\n── tarayıcı testi: test:e2e:${name} (E2E_BASE=${process.env.E2E_BASE ?? 'varsayılan'}) ──`)

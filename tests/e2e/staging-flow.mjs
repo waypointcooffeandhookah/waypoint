@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { STAGING_REF, PRODUCTION_REF } from '../../src/supabaseTarget.js'
 import { installTestGrant } from './testGrant.mjs'
+import { closeTestTable, stagingAdmin } from './tableCleanup.mjs'
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173/waypoint'
 const BROWSER = [process.env.E2E_BROWSER, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/usr/bin/google-chrome']
@@ -475,6 +476,12 @@ try {
     expect(!supabaseHosts.some(host => host.includes(PRODUCTION_REF)), `üretime istek: ${supabaseHosts}`)
     expect(supabaseHosts.length === 1 && supabaseHosts[0].startsWith(STAGING_REF), `beklenmeyen: ${supabaseHosts}`)
     return supabaseHosts[0]
+  })
+
+  // Masa 5 açık kalırsa sonraki çalıştırmanın sipariş sayıları kayar; normal personel yoluyla kapatılır (silinmez).
+  await step('Temizlik: Masa 5 servis/iptal, ödeme ve kapatma ile normal yoldan kapatılır', async () => {
+    const admin = await stagingAdmin()
+    try { return JSON.stringify(await closeTestTable(admin, 'Masa 5')) } finally { await admin.auth.signOut() }
   })
 
   console.log(results.join('\n'))
