@@ -51,6 +51,19 @@
 .ad-breakdown li { display: flex; justify-content: space-between; font-size: 0.86rem; color: var(--text-secondary); }
 .ad-breakdown strong { color: #f8f6f2; }
 .ad-empty { padding: 24px 0; text-align: center; }
+.ad-figure small { font-size: 0.7rem; line-height: 1.35; color: var(--text-muted); }
+.ad-revenue-stats .ad-stat strong { font-size: 1.45rem; overflow-wrap: anywhere; }
+.ad-stale { opacity: 0.55; }
+.ad-revenue-note { margin: 0; font-size: 0.76rem; line-height: 1.45; }
+.ad-refresh { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+.ad-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ad-breakdown li.ad-breakdown-sub { padding-left: 12px; font-size: 0.8rem; color: var(--text-muted); }
+.ad-top { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ad-top b { flex-shrink: 0; width: 22px; font-weight: 700; color: var(--text-muted); }
+.ad-top li { display: flex; align-items: baseline; gap: 8px; font-size: 0.86rem; color: var(--text-secondary); }
+.ad-top span { min-width: 0; color: #f8f6f2; overflow-wrap: anywhere; }
+.ad-top em { flex-shrink: 0; font-style: normal; font-size: 0.76rem; color: var(--text-muted); }
+.ad-top strong { flex-shrink: 0; margin-left: auto; color: #f8f6f2; }
 
 .ad-order, .ad-table, .ad-zone, .ad-person { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; background: var(--pos-card); border: 1px solid rgba(255, 255, 255, 0.09); overflow-wrap: anywhere; }
 .ad-zone { background: rgba(255, 255, 255, 0.03); }

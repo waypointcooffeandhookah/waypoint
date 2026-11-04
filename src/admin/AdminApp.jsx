@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, Navigate, NavLink, useNavigate, useParams } from 'react-router-dom'
-import { Bike, ChefHat, ClipboardList, Eye, LayoutDashboard, LogOut, Settings, Soup, Table2, Users } from 'lucide-react'
+import { Bike, ChefHat, ClipboardList, Eye, LayoutDashboard, LogOut, Settings, Soup, Table2, Users, Wallet } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../supabaseClient'
 import AdminPage from '../pages/AdminPage'
@@ -13,11 +13,13 @@ import '../pos/ui/pos.css'
 import './admin.css'
 
 const DeliverySection = lazy(() => import('./DeliverySection'))
+const RevenueSection = lazy(() => import('./RevenueSection'))
 
 const SECTIONS = [
   { key: '', label: 'Panel', Icon: LayoutDashboard, element: <DashboardSection /> },
   { key: 'menu', label: 'Menü', Icon: Soup, element: <AdminPage embedded /> },
   { key: 'siparisler', label: 'Siparişler', Icon: ClipboardList, element: <OrdersSection /> },
+  { key: 'ciro', label: 'Ciro', Icon: Wallet, element: <Suspense fallback={null}><RevenueSection /></Suspense> },
   { key: 'masalar', label: 'Masalar', Icon: Table2, element: <TablesSection /> },
   { key: 'teslimat', label: 'Teslimat', Icon: Bike, element: <Suspense fallback={null}><DeliverySection /></Suspense> },
   { key: 'ayarlar', label: 'Sipariş Ayarları', Icon: Settings, element: <SettingsSection /> },
