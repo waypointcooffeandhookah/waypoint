@@ -36,7 +36,7 @@ export default function StaffLogin({ demo, area, onSignedIn, onStartDemo }) {
         <Link to="/" className="back-link"><ArrowLeft size={14} /> Menüye dön</Link>
 
         <div className="login-logo">
-          <img src={`${import.meta.env.BASE_URL}logo-balanced.png`} alt="Waypoint Logo" className="login-logo-img" />
+          <img src={`${import.meta.env.BASE_URL}logo-mark-320.webp`} alt="Waypoint Logo" className="login-logo-img" width="72" height="72" />
           <div className="login-logo-text">
             <span className="login-logo-name">WAYPOINT</span>
             <span className="login-logo-sub">COFFEE & HOOKAH • {area.tag}</span>

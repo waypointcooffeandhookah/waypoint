@@ -19,8 +19,8 @@ function stagingPwa() {
     theme_color: '#0a0a0a',
     lang: 'tr',
     icons: [
-      { src: `${base}logo.png`, sizes: '576x576', type: 'image/png', purpose: 'any' },
-      { src: `${base}logo-balanced.png`, sizes: '1254x1254', type: 'image/png', purpose: 'any' },
+      { src: `${base}icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: `${base}icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
     ],
   }, null, 2)
   const sw = () => readFileSync(new URL('./src/pwa/sw.js', import.meta.url), 'utf8')
@@ -43,7 +43,7 @@ function stagingPwa() {
       return [
         // Erişim koruması (çerezli oturum) önünde de manifest yüklenebilsin diye istek çerezle gider.
         { tag: 'link', attrs: { rel: 'manifest', href: `${base}manifest.webmanifest`, crossorigin: 'use-credentials' }, injectTo: 'head' },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${base}logo.png` }, injectTo: 'head' },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png` }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-title', content: 'WP Garson' }, injectTo: 'head' },

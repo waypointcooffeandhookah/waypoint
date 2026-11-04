@@ -28,8 +28,8 @@ self.addEventListener('push', event => {
   const options = {
     body: text(data.body, 900),
     tag: text(data.tag, 80) || 'waypoint',
-    icon: new URL('logo.png', SCOPE).href,
-    badge: new URL('logo.png', SCOPE).href,
+    icon: new URL('icon-192.png', SCOPE).href,
+    badge: new URL('icon-192.png', SCOPE).href,
     timestamp: Date.parse(data.at) || Date.now(),
     data: { url: safeUrl(data.url) },
   }

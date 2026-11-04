@@ -25,13 +25,11 @@
 @keyframes ipek-soft-enter {
   0% {
     opacity: 0;
-    filter: blur(8px);
-    transform: translateY(16px);
+    transform: translate3d(0, 14px, 0) scale(0.985);
   }
   100% {
     opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
+    transform: none;
   }
 }
 .ipek-soft-enter {
@@ -377,8 +375,6 @@
   top: 0;
   width: 100%;
   background: linear-gradient(135deg, rgba(62, 30, 18, 0.96) 0%, rgba(38, 20, 14, 0.94) 35%, rgba(12, 48, 46, 0.94) 70%, rgba(17, 87, 84, 0.96) 100%);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
   border-bottom: 1px solid rgba(26, 123, 118, 0.35);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(232, 218, 194, 0.08) inset;
   padding: 12px 18px 10px;
@@ -457,7 +453,7 @@
   font-size: 0.85rem;
   color: #f8f6f2;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .menu-search:focus {
   outline: none;
@@ -524,7 +520,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
 }
 .story-ring.active {
   background: linear-gradient(135deg, #115754 0%, #1a7b76 50%, #4ecdc4 100%);
@@ -608,8 +604,9 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.28s ease, box-shadow 0.28s ease;
   text-decoration: none;
+  animation: 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards menu-card-enter; /* backwards: bitince hover transform'u ezmez */
 }
 .editorial-card:hover {
   transform: translateY(-2.5px);
@@ -655,7 +652,12 @@
   height: 100%;
   object-fit: contain;
   padding: 6px;
-  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+.editorial-card-img:not([data-loaded]) { opacity: 0; }
+@keyframes menu-card-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to { opacity: 1; transform: none; }
 }
 .editorial-card:hover .editorial-card-img {
   transform: scale(1.08);
@@ -1025,7 +1027,7 @@
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   gap: 12px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 .modal-variant-row:hover {
   background: rgba(26, 123, 118, 0.16);

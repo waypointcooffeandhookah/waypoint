@@ -58,7 +58,7 @@ export default function AdminPage({ embedded = false }) {
       {!embedded && <header className="admin-header">
         <div className="admin-header-brand">
           <img
-            src={`${import.meta.env.BASE_URL}logo-balanced.png`}
+            src={`${import.meta.env.BASE_URL}logo-mark-320.webp`}
             alt="Waypoint Logo"
             className="admin-header-logo-img"
           />

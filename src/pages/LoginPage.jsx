@@ -37,7 +37,7 @@ export default function LoginPage() {
 
         <div className="login-logo">
           <img
-              src={`${import.meta.env.BASE_URL}logo-balanced.png`}
+              src={`${import.meta.env.BASE_URL}logo-mark-320.webp`}
             alt="Waypoint Logo"
             className="login-logo-img"
           />

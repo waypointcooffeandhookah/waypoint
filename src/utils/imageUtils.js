@@ -114,3 +114,7 @@ export function getItemDescription(item) {
   if (item?.description) return item.description
   return defaultProductDescription(item)
 }
+
+// Yönetim panelinden yüklenen görseller uploads/<uuid>.webp + uploads/<uuid>.thumb.webp olarak saklanır.
+// Menü kartı küçük görseli kullanır; yoksa (eski yükleme) tam görsele düşer.
+export const thumbUrl = url => (/\/menu-images\/uploads\/[^/?#]+\.webp$/.test(url ?? '') && !/\.thumb\.webp$/.test(url) ? url.replace(/\.webp$/, '.thumb.webp') : null)

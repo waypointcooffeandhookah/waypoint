@@ -32,7 +32,7 @@ export default function OrderTrackingPage() {
   return (
     <main className="qr-track-page">
       <header className="qr-track-header">
-        <img src={`${import.meta.env.BASE_URL}logo-balanced.png`} alt="" className="pos-brand-logo" />
+        <img src={`${import.meta.env.BASE_URL}logo-mark-144.webp`} alt="" className="pos-brand-logo" width="40" height="40" />
         <div><span className="pos-brand-name">WAYPOINT</span><h1 className="qr-track-title">Sipariş Takibi</h1></div>
       </header>
       {state === 'loading' && <div className="loading-screen" role="status"><div className="spinner" />Sipariş yükleniyor…</div>}

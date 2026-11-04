@@ -15,10 +15,10 @@ export default function ImageUpload({ value, onChange, onBusy }) {
     finally { setBusy(false); onBusy(false); event.target.value = '' }
   }
   return <div className="input-group">
-    <label className="input-label">Fotoğraf yükle (JPG, PNG, WebP · en fazla 5 MB)
+    <label className="input-label">Fotoğraf yükle (JPG, PNG, WebP · en fazla 15 MB; otomatik küçültülür)
       <input className="input" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={upload} />
     </label>
-    {busy && <span role="status">Fotoğraf yükleniyor…</span>}
+    {busy && <span role="status">Fotoğraf küçültülüp yükleniyor…</span>}
     {value && <img src={value} alt="Seçilen görsel önizlemesi" style={{ width: 120, height: 100, objectFit: 'contain', background: '#fff', borderRadius: 12 }} />}
   </div>
 }

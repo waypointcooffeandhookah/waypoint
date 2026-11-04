@@ -17,7 +17,10 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
-import { trLower, getAssetUrl, getItemImage, getItemDescription } from '../utils/imageUtils'
+import { trLower, getAssetUrl, getItemImage, getItemDescription, thumbUrl } from '../utils/imageUtils'
+
+// Önbellekten gelen görsel onLoad'dan önce hazır olabilir; görünmez kalmasın.
+const markLoaded = el => { if (el?.complete && el.naturalWidth) el.dataset.loaded = '1' }
 import './MenuPage.css'
 import { readMenuCache, writeMenuCache } from '../utils/menuCache'
 import { SUPABASE_URL } from '../config'
@@ -446,7 +449,7 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowHero(true) } }}
             >
               <img
-                src={`${import.meta.env.BASE_URL}logo-balanced.png`}
+                src={`${import.meta.env.BASE_URL}logo-mark-144.webp`}
                 alt="Waypoint Logo"
                 className="menu-logo-img"
               />
@@ -627,7 +630,7 @@ function OpeningHeroScreen({ onEnter, tableChip }) {
         <div className="hero-logo-wrap">
           <span className="hero-logo-medallion">
           <img
-            src={`${import.meta.env.BASE_URL}logo-balanced.png`}
+            src={`${import.meta.env.BASE_URL}logo-mark-320.webp`}
             alt="Waypoint Logo"
             className="ipek-logo-enter hero-logo-img"
           />
@@ -694,6 +697,7 @@ function OpeningHeroScreen({ onEnter, tableChip }) {
 const EditorialProductCard = memo(function EditorialProductCard({ item, delay, onSelect, ordering }) {
   const isAvail = item.is_available !== false
   const imgUrl = getItemImage(item)
+  const thumb = thumbUrl(imgUrl)
   const hasImage = Boolean(imgUrl)
   const displayName = item.name === 'Şişe Kola' ? 'Cam Şişe Kola' : item.name
 
@@ -730,8 +734,12 @@ const EditorialProductCard = memo(function EditorialProductCard({ item, delay, o
           <div className="ipek-card-image">
             {hasImage ? (
               <img
-                src={imgUrl}
+                src={thumb ?? imgUrl}
                 alt={displayName}
+                width="96" height="96"
+                ref={markLoaded}
+                onLoad={event => { event.currentTarget.dataset.loaded = '1' }}
+                onError={event => { if (thumb && !event.currentTarget.dataset.fallback) { event.currentTarget.dataset.fallback = '1'; event.currentTarget.src = imgUrl } else event.currentTarget.dataset.loaded = '1' }}
                 className={`editorial-card-img ${/^çay$|^cay$|limonata|ayran|[şs]algam|uluda[ğg].*gazoz|yedi\s*g[üu]n|frozen|smoothie|milkshake|cool lime|berry hib[ui]scus/.test(trLower(item.name)) ? 'editorial-card-img-frozen' : ''} ${!isAvail ? 'grayscale opacity-60' : ''}`}
                 loading="lazy" decoding="async"
               />

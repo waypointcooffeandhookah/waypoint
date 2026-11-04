@@ -55,7 +55,7 @@ export default function AdminApp() {
     <div className="ad-shell">
       <aside className="ad-side">
         <div className="ad-brand">
-          <img src={`${import.meta.env.BASE_URL}logo-balanced.png`} alt="" className="pos-brand-logo" />
+          <img src={`${import.meta.env.BASE_URL}logo-mark-144.webp`} alt="" className="pos-brand-logo" width="40" height="40" />
           <div className="pos-brand-text">
             <span className="pos-brand-name">WAYPOINT</span>
             <span className="pos-brand-sub">Yönetim</span>
