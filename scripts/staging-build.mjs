@@ -1,14 +1,14 @@
-// STAGING derlemesi (Netlify: npm run build:netlify · Cloudflare Pages: npm run build:cloudflare — aynı betik)
+// Netlify STAGING derlemesi: npm run build:netlify
 // 1) Dal ve ortam denetimi (yanlış dal / üretim Supabase / sır varsa derleme DÜŞER, sessizce devam etmez)
 // 2) vite build --mode staging --base=/  → dist-staging/
-// 3) 404.html kaldırılır, _headers/_redirects/robots.txt yazılır (Netlify'da SPA yeniden yazımı eklenir)
+// 3) 404.html kaldırılır, _headers/_redirects (SPA yeniden yazımı dahil)/robots.txt yazılır
 // 4) Çıktı paketi taranır: yalnızca staging anon/publishable anahtar, sır yok
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadEnv } from 'vite'
-import { OUT_DIR, ROBOTS, redirectsFor, checkBranch, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
+import { OUT_DIR, ROBOTS, REDIRECTS_FILE, checkBranch, checkBuildEnv, headersFile, scanBundle } from './staging-build.lib.mjs'
 
 const rootPath = fileURLToPath(new URL('../', import.meta.url))
 const fail = message => { console.error(`\n✖ Staging derlemesi durduruldu: ${message}\n`); process.exit(1) }
@@ -28,10 +28,10 @@ rmSync(out, { recursive: true, force: true })
 execFileSync(process.execPath, [join(rootPath, 'node_modules/vite/bin/vite.js'), 'build', '--mode', 'staging', '--base=/', '--outDir', OUT_DIR, '--emptyOutDir'],
   { cwd: rootPath, stdio: 'inherit' })
 
-// public/404.html GitHub Pages içindir (eski, sabit hash'li dosya adları taşır); Cloudflare'de SPA geri dönüşünü kapatır.
+// public/404.html GitHub Pages içindir (eski, sabit hash'li dosya adları taşır); SPA yeniden yazımını gölgeler.
 rmSync(join(out, '404.html'), { force: true })
 writeFileSync(join(out, '_headers'), headersFile(viteEnv.VITE_SUPABASE_URL))
-writeFileSync(join(out, '_redirects'), redirectsFor(branch.host))
+writeFileSync(join(out, '_redirects'), REDIRECTS_FILE)
 writeFileSync(join(out, 'robots.txt'), ROBOTS)
 
 const walk = dir => readdirSync(dir).flatMap(name => {
@@ -62,7 +62,7 @@ for (const [ok, what] of [
   [existsSync(join(out, 'sw.js')), 'sw.js var'],
   [index.includes('manifest.webmanifest'), 'manifest bağlantısı var'],
   [index.includes('src="/assets/'), 'varlıklar kök yoldan (/assets/) yükleniyor'],
-  [branch.host === 'cloudflare' || readFileSync(join(out, '_redirects'), 'utf8').includes('/* /index.html 200'), 'SPA yeniden yazımı (_redirects) var'],
+  [readFileSync(join(out, '_redirects'), 'utf8').includes('/* /index.html 200'), 'SPA yeniden yazımı (_redirects) var'],
 ]) if (!ok) fail(`çıktı denetimi: ${what} değil`)
 
 console.log(`\n✔ Staging paketi hazır: ${OUT_DIR}/ (${files.length} dosya tarandı, sorun yok)`)

@@ -16,7 +16,7 @@ function jwtClaims(key) {
 
 function stagingProblem(url, key) {
   if (!url) return 'VITE_SUPABASE_URL tanımlı değil'
-  // Tam adres yazılmaz: staging paketi taramasında (cloudflare-build) üretim adresi hiç geçmemeli.
+  // Tam adres yazılmaz: staging paketi taramasında (staging-build) üretim adresi hiç geçmemeli.
   if (url.includes(PRODUCTION_REF)) return 'adres üretim projesini gösteriyor'
   if (url !== `https://${STAGING_REF}.supabase.co`) return 'adres staging projesi değil'
   if (!key) return 'VITE_SUPABASE_ANON_KEY tanımlı değil'

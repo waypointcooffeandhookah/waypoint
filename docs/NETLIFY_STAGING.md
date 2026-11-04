@@ -16,7 +16,7 @@ Ayarlar depodaki `netlify.toml` dosyasından gelir (arayüzdeki değerleri geçe
 | Publish directory | `dist-staging` |
 | Node | `NODE_VERSION=22` (`netlify.toml`) |
 
-Derleme betiği (`scripts/cloudflare-build.mjs`, Netlify'da `NETLIFY=true`, `BRANCH`, `CONTEXT` okur) şunlarda **durur**:
+Derleme betiği (`scripts/staging-build.mjs`, Netlify'da `NETLIFY=true`, `BRANCH`, `CONTEXT` okur) şunlarda **durur**:
 başka dal, PR önizlemesi, üretim Supabase adresi/anahtarı, `service_role`/`sb_secret_` anahtarı, sunucu sırrı adı.
 
 ## 2. Ortam değişkenleri (Netlify → Site configuration → Environment variables)

@@ -118,7 +118,7 @@ check((await fetch(`${ORIGIN}/sw.js`).then(r => r.text())).includes('push'), 'sw
 const staffLogin = await evaluate("!!document.querySelector('input[type=password]')")
 await visit('/garson')
 check(staffLogin !== undefined && await evaluate("!!document.querySelector('input[type=password]')"), 'garson paneli personel girişi ister')
-check(await evaluate("document.querySelector('.staging-badge')?.textContent?.includes('STAGING')"), 'STAGING etiketi görünür')
+check(await evaluate("!document.querySelector('.staging-badge') && !document.body.innerText.includes('Test verisi')"), 'staging rozeti müşteriye gösterilmiyor')
 check(await evaluate("document.querySelector('meta[name=robots]')?.content === 'noindex, nofollow'"), 'noindex meta etiketi var')
 const manifest = await evaluate("fetch('/manifest.webmanifest').then(r => r.json()).then(m => m.start_url + '|' + m.display)")
 check(manifest === '/garson|standalone', `manifest: ${manifest}`)

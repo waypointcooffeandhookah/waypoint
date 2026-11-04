@@ -25,4 +25,4 @@ writeFileSync(FILE, [
 ].join('\n'), { mode: 0o600 })
 
 console.log('Yazıldı: .staging-push-secrets.local (gizli)')
-console.log(`Cloudflare Pages / .env.staging.local için GENEL anahtar:\nVITE_WEB_PUSH_PUBLIC_KEY=${publicKey}`)
+console.log(`Netlify ortam değişkeni / .env.staging.local için GENEL anahtar:\nVITE_WEB_PUSH_PUBLIC_KEY=${publicKey}`)

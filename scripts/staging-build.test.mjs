@@ -1,8 +1,8 @@
-// Cloudflare Pages staging derleme korumaları: dal, üretime sessiz bağlantı, sır sızıntısı.
+// Netlify staging derleme korumaları: dal, üretime sessiz bağlantı, sır sızıntısı.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PRODUCTION_REF, STAGING_REF } from '../src/supabaseTarget.js'
-import { REDIRECTS, SPA_FALLBACK, checkBranch, detectHost, redirectsFor, checkBuildEnv, headersFile, scanBundle, netlifyShouldBuild } from './cloudflare-build.lib.mjs'
+import { REDIRECTS_FILE, SPA_FALLBACK, checkBranch, detectHost, checkBuildEnv, headersFile, scanBundle, netlifyShouldBuild } from './staging-build.lib.mjs'
 
 const jwt = claims => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2lnbmF0dXJl`
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`
@@ -10,29 +10,20 @@ const anon = jwt({ ref: STAGING_REF, role: 'anon' })
 const pushKey = Buffer.from(Uint8Array.from({ length: 65 }, (_, i) => (i ? i : 4))).toString('base64url')
 const good = { VITE_SUPABASE_URL: STAGING_URL, VITE_SUPABASE_ANON_KEY: anon, VITE_WEB_PUSH_PUBLIC_KEY: pushKey }
 
-test('dal: Cloudflare üzerinde yalnızca feature/restaurant-pos derlenir', () => {
-  assert.equal(checkBranch({ CF_PAGES: '1', CF_PAGES_BRANCH: 'feature/restaurant-pos' }).ok, true)
-  for (const branch of ['main', 'feature/other', '']) assert.equal(checkBranch({ CF_PAGES: '1', CF_PAGES_BRANCH: branch }).ok, false, branch)
-  assert.equal(checkBranch({}).ok, true)
-})
-
 test('dal: Netlify üzerinde yalnızca feature/restaurant-pos production/branch-deploy derlenir; PR önizlemesi reddedilir', () => {
   const netlify = (BRANCH, CONTEXT = 'production') => checkBranch({ NETLIFY: 'true', BRANCH, CONTEXT })
   assert.deepEqual(netlify('feature/restaurant-pos'), { ok: true, host: 'netlify' })
   assert.equal(netlify('feature/restaurant-pos', 'branch-deploy').ok, true)
   for (const branch of ['main', 'feature/other', '', undefined]) assert.equal(netlify(branch).ok, false, String(branch))
   for (const context of ['deploy-preview', 'dev', null]) assert.match(netlify('feature/restaurant-pos', context).error ?? '', /bağlamı derlenmez/, String(context))
-  assert.deepEqual([detectHost({ NETLIFY: 'true' }), detectHost({ CF_PAGES: '1' }), detectHost({})], ['netlify', 'cloudflare', 'local'])
+  assert.deepEqual([detectHost({ NETLIFY: 'true' }), detectHost({ CF_PAGES: '1' }), detectHost({})], ['netlify', 'local', 'local'])
+  assert.equal(checkBranch({}).ok, true, 'yerel derleme')
 })
 
-test('yönlendirmeler: Netlify ve yerelde SPA yeniden yazımı eski /waypoint kurallarından SONRA gelir; Cloudflare’da yok', () => {
-  for (const host of ['netlify', 'local']) {
-    const rules = redirectsFor(host).trim().split('\n')
-    assert.equal(rules.at(-1), SPA_FALLBACK.trim(), host)
-    assert.ok(rules.indexOf('/waypoint/* /:splat 301') < rules.length - 1)
-  }
-  assert.equal(redirectsFor('cloudflare'), REDIRECTS)
-  assert.ok(!redirectsFor('cloudflare').includes('/index.html'))
+test('yönlendirmeler: SPA yeniden yazımı eski /waypoint kurallarından SONRA gelir', () => {
+  const rules = REDIRECTS_FILE.trim().split('\n')
+  assert.equal(rules.at(-1), SPA_FALLBACK.trim())
+  assert.ok(rules.indexOf('/waypoint/* /:splat 301') < rules.length - 1)
 })
 
 test('ortam: doğru staging ayarı geçer; eksik/üretim/servis anahtarı derlemeyi durdurur', () => {
@@ -78,7 +69,7 @@ test('başlıklar ve yönlendirmeler: noindex, çerçeve yasağı, referrer yok 
     assert.ok(headers.includes(needle), needle)
   }
   assert.ok(!headers.includes(PRODUCTION_REF))
-  assert.match(REDIRECTS, /^\/waypoint\/\* \/:splat 301$/m)
+  assert.match(REDIRECTS_FILE, /^\/waypoint\/\* \/:splat 301$/m)
 })
 
 test('Netlify ignore: yalnızca staging dalının production yayını derlenir; PR önizlemeleri ve diğer dallar atlanır', async () => {

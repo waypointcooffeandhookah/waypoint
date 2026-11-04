@@ -127,7 +127,7 @@ test('kapatma/çıkış: önce sunucu kaydı silinir, sonra cihaz aboneliği; su
 })
 
 // ── Service worker ──────────────────────────────────────────────
-function loadServiceWorker(scope = 'https://staging.example.pages.dev/') {
+function loadServiceWorker(scope = 'https://staging.example.netlify.app/') {
   const listeners = {}
   const shown = []
   const opened = []
@@ -157,11 +157,11 @@ test('service worker: push her zaman görünür bildirim gösterir; tag korunur;
   const sw = loadServiceWorker()
   const messages = []
   // vm bağlamındaki nesnelerin prototipi farklıdır; düz nesneye çevrilerek karşılaştırılır.
-  sw.clients.push({ url: 'https://staging.example.pages.dev/garson', postMessage: m => messages.push(JSON.parse(JSON.stringify(m))) })
+  sw.clients.push({ url: 'https://staging.example.netlify.app/garson', postMessage: m => messages.push(JSON.parse(JSON.stringify(m))) })
   await sw.fire('push', pushEvent({ title: 'Masa 5 — Siparişiniz Hazır!', body: '2 × Köfte', tag: 'waypoint-ready-42', url: 'garson/masa/t5', at: '2026-11-03T10:00:00Z' }))
   assert.equal(sw.shown[0].title, 'Masa 5 — Siparişiniz Hazır!')
   assert.equal(sw.shown[0].options.tag, 'waypoint-ready-42')
-  assert.equal(sw.shown[0].options.data.url, 'https://staging.example.pages.dev/garson/masa/t5')
+  assert.equal(sw.shown[0].options.data.url, 'https://staging.example.netlify.app/garson/masa/t5')
   assert.deepEqual(messages, [{ type: 'waypoint-push', tag: 'waypoint-ready-42' }])
   assert.ok(!('fetch' in sw.listeners), 'önbellek/fetch işleyicisi yok')
 })
@@ -171,21 +171,21 @@ test('service worker: bozuk yük yine bildirim gösterir; dış adrese yönlendi
   await sw.fire('push', { data: { json: () => { throw new Error('bad') } } })
   assert.equal(sw.shown[0].title, 'Waypoint — Yeni bildirim')
   await sw.fire('push', pushEvent({ title: 'x', url: 'https://evil.example/phish' }))
-  assert.equal(sw.shown[1].options.data.url, 'https://staging.example.pages.dev/garson')
+  assert.equal(sw.shown[1].options.data.url, 'https://staging.example.netlify.app/garson')
   await sw.fire('push', pushEvent({ title: 'y', url: '//evil.example/x' }))
-  assert.equal(sw.shown[2].options.data.url, 'https://staging.example.pages.dev/garson')
+  assert.equal(sw.shown[2].options.data.url, 'https://staging.example.netlify.app/garson')
 })
 
 test('service worker: bildirime dokunma açık uygulamayı masaya götürür, yoksa yeni pencere açar', async () => {
   const sw = loadServiceWorker()
-  const notification = { data: { url: 'https://staging.example.pages.dev/garson/masa/t5' }, close() { this.closed = true } }
+  const notification = { data: { url: 'https://staging.example.netlify.app/garson/masa/t5' }, close() { this.closed = true } }
   await sw.fire('notificationclick', { notification })
-  assert.deepEqual(sw.opened, ['https://staging.example.pages.dev/garson/masa/t5'])
+  assert.deepEqual(sw.opened, ['https://staging.example.netlify.app/garson/masa/t5'])
   assert.ok(notification.closed)
 
   const navigated = []
-  sw.clients.push({ url: 'https://staging.example.pages.dev/garson', focus: async () => {}, navigate: async url => navigated.push(url) })
+  sw.clients.push({ url: 'https://staging.example.netlify.app/garson', focus: async () => {}, navigate: async url => navigated.push(url) })
   await sw.fire('notificationclick', { notification })
-  assert.deepEqual(navigated, ['https://staging.example.pages.dev/garson/masa/t5'])
+  assert.deepEqual(navigated, ['https://staging.example.netlify.app/garson/masa/t5'])
   assert.equal(sw.opened.length, 1)
 })

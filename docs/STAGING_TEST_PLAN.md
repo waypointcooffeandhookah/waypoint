@@ -53,17 +53,6 @@ personel adımları telefonda/tablette elle izlenir:
 - [ ] Gönder düğmesine iki kez hızlı basma → tek sipariş.
 - [ ] Test bitince normal tarayıcıdan gönderim "Sipariş sistemi geçici olarak kapalı" uyarısı verir.
 
-## 4. Web Push (onaydan sonra kurulum)
+## 4. Web Push ve fiziksel cihaz testleri
 
-Ön koşul: `docs/CLOUDFLARE_STAGING.md` §4 adımları (anahtarlar, migration `20261103090000_pos_web_push.sql`,
-`push-dispatch` Edge Function, secrets, `supabase/staging/05_web_push_dispatch.sql`). Netlify'ın bu kuruluma
-etkisi yoktur: gönderimi Supabase yapar, tarayıcı sekmesi açık olmak zorunda değildir.
-
-## 5. Fiziksel cihaz testleri (otomatik testlerin yerine geçmez)
-
-- [ ] iPhone (iOS 16.4+): Safari → Netlify adresi → Paylaş → **Ana Ekrana Ekle** → uygulamadan garson girişi →
-      Bildirimleri aç (izin isteği yalnızca Ana Ekran uygulamasında çıkar).
-- [ ] iPhone: uygulamayı kapat + ekranı kilitle → mutfak "hazır" → kilit ekranında bildirim; dokununca masa açılır.
-- [ ] Android Chrome: siteyi yükle (Yükle/Ana ekrana ekle) → giriş → bildirimleri aç → Chrome kapalı + ekran kilitli → bildirim.
-- [ ] İzin reddedilince yönlendirme metni doğru; ayarlardan açınca çalışıyor.
-- [ ] Çıkış yapınca o cihaza bildirim gelmiyor; iki garson ikisi de alıyor; uygulama öndeyken tek bildirim.
+Kurulum adımları, sırlar ve iPhone/Android kilit ekranı testleri: `docs/WEB_PUSH_SETUP.md`.

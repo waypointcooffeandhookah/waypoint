@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 
 // Garson cihazları için Ana Ekran uygulaması (iOS Web Push şartı) ve service worker.
 // YALNIZCA staging modunda eklenir: GitHub Pages üretim menüsünün çıktısı değişmez.
-// Taban yol Vite'ın çözdüğü değerdir: GitHub Pages /waypoint/, Cloudflare Pages staging / (--base=/).
+// Taban yol Vite'ın çözdüğü değerdir: GitHub Pages /waypoint/, Netlify staging / (--base=/).
 function stagingPwa() {
   let base = '/'
   const manifest = () => JSON.stringify({
@@ -41,7 +41,7 @@ function stagingPwa() {
     },
     transformIndexHtml() {
       return [
-        // Cloudflare Access önündeyken manifest isteği çerezle gitmelidir.
+        // Erişim koruması (çerezli oturum) önünde de manifest yüklenebilsin diye istek çerezle gider.
         { tag: 'link', attrs: { rel: 'manifest', href: `${base}manifest.webmanifest`, crossorigin: 'use-credentials' }, injectTo: 'head' },
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${base}logo.png` }, injectTo: 'head' },
         { tag: 'meta', attrs: { name: 'apple-mobile-web-app-capable', content: 'yes' }, injectTo: 'head' },

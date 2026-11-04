@@ -564,7 +564,7 @@ try {
     expect(!panel.includes('—  ') && !/^ — Siparişiniz/m.test(panel), 'masasız bildirim')
   })
 
-  await step('Tüm katalog: her kategoride ürün görselleri /waypoint/ yolunda yüklenir, kırık görsel yok', async () => {
+  await step('Tüm katalog: her kategoride ürün görselleri uygulamanın taban yolunda yüklenir, kırık görsel yok', async () => {
     await enterMenu(customer, '/')
     await customer.until(`document.querySelector('.qr-channel-chip')`, 'kanal düğmesi')
     const chips = await customer.ev(`document.querySelectorAll('.story-item').length`)
@@ -585,7 +585,7 @@ try {
     // Fotoğrafı olmayan Oralet ürünleri grup olarak görünür; kapak yerel çözücüden gelir.
     await customer.type('.menu-search', 'Oralet')
     await customer.until(`${cardOf('Oralet')}?.querySelector('img')?.naturalWidth>0`, 'yerel görsel', 8000)
-    expect((await customer.ev(`${cardOf('Oralet')}.querySelector('img').src`)).includes('/waypoint/images/oralet.jpg'), 'yerel görsel taban yolu')
+    expect((await customer.ev(`${cardOf('Oralet')}.querySelector('img').src`)).includes(`${new URL(BASE).pathname.replace(/\/$/, '')}/images/oralet.jpg`), 'yerel görsel taban yolu')
     await customer.type('.menu-search', '')
     return `${checked} görsel denetlendi`
   })

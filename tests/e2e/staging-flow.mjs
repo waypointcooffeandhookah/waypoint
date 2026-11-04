@@ -112,10 +112,10 @@ try {
   await customer.size(390, 844); await second.size(390, 844)
   let total = ''
 
-  await step('Bağlam: sayfa staging etiketli açılır, demo modu yoktur', async () => {
+  await step('Bağlam: masa açılır, müşteriye test rozeti gösterilmez, demo modu yoktur', async () => {
     await enterMenu(customer, `/masa/${TOKEN_5}`)
     await customer.until(`document.querySelector('.qr-table-chip')?.innerText.includes('Masa 5')`, 'Masa 5 etiketi')
-    expect(await customer.ev(`document.querySelector('.staging-badge')?.innerText.includes('STAGING')`), 'staging etiketi yok')
+    expect(!await customer.ev(`!!document.querySelector('.staging-badge')`), 'test rozeti görünüyor')
     expect(!await customer.ev(`!!document.querySelector('.qr-banner-demo')`), 'demo modunda')
     return `güvenli bağlam: ${await customer.ev('window.isSecureContext')}, randomUUID: ${await customer.ev(`typeof crypto.randomUUID`)}`
   })

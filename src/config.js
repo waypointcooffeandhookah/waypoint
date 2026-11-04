@@ -2,7 +2,7 @@
 import { resolveSupabaseTarget } from './supabaseTarget'
 
 // import.meta.env.MODE derleme anında sabitlenir: staging paketinde üretim adresi ve anahtarı hiç bulunmaz
-// (scripts/cloudflare-build.mjs paketi tarayarak bunu doğrular).
+// (scripts/staging-build.mjs paketi tarayarak bunu doğrular).
 const PRODUCTION_FALLBACK = import.meta.env.MODE === 'staging' ? null : {
   url: 'https://vuqypdluduvqklickadn.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1cXlwZGx1ZHV2cWtsaWNrYWRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDM4MDYsImV4cCI6MjEwNzYxOTgwNn0.nZnOenXLrsPubBn3ZBGLPLhc4kd1uhPXiYJQ-UW_8RM',

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
-import { CONFIG_ERROR, IS_STAGING } from './config'
+import { CONFIG_ERROR } from './config'
 import './index.css'
 
 // Hem yerel ortamda (localhost) hem de GitHub Pages (/waypoint) ortamında kusursuz çalışması için dinamik basename
@@ -18,7 +18,6 @@ else root.render(
   <React.StrictMode>
     <BrowserRouter basename={basename}>
       <App />
-      {IS_STAGING && <div className="staging-badge" role="note">STAGING · Test verisi</div>}
       <Toaster
         position="top-center"
         toastOptions={{
