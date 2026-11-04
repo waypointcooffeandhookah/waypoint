@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDb, createUser, rpc, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, addTable, menuItem, ANON, qrVisit } from './db-harness.mjs'
 
 const TABLES = ['categories', 'menu_items', 'menu_promotion', 'social_settings', 'restaurant_tables', 'table_qr_tokens', 'staff_profiles',
   'fulfillment_settings', 'delivery_zones', 'table_sessions', 'bills', 'orders', 'order_items', 'order_fulfillments',
@@ -31,7 +31,7 @@ test('yedekten üretilen restore.sql tüm tabloları birebir geri yükler; saya�
   const item = await menuItem(source, first.name)
   const items = JSON.stringify([{ menu_item_id: item.id, quantity: 20 }])
   for (let i = 0; i < 3; i++) await rpc(source, waiter, 'place_staff_order', { p_table_id: table.id, p_idempotency_key: randomUUID(), p_items: items })
-  await rpc(source, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items }).catch(() => null)
+  await rpc(source, ANON, 'place_qr_order', { p_table_token: await qrVisit(source, table.token), p_idempotency_key: randomUUID(), p_items: items }).catch(() => null)
 
   // npm run backup:staging çıktısıyla aynı biçim: data/*.json + manifest.json (özetler ve satır sayıları).
   const dir = mkdtempSync(join(tmpdir(), 'wp-yedek-'))

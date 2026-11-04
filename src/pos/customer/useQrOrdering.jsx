@@ -13,23 +13,24 @@ import { detectPosMode } from '../backend/staffAuth'
 import { createDemoBackend } from '../backend/demoBackend'
 import { createBrowserDemoStore } from '../backend/demoStore'
 import { createLiveQrBackend } from './liveQrBackend'
-import { demoTableIdOf, isFreshPending, isLiveToken, loadQrState, saveQrState } from './qrOrders'
+import { VISIT_ERRORS, clearVisit, demoTableIdOf, isFreshPending, isVisitToken, loadQrState, saveQrState } from './qrOrders'
 import OrderControl from './OrderControl'
 
 const POLL_MS = 15000
 const idleSync = { mode: 'idle', subscribe: (_change, connection) => { connection('connected'); return () => {} } }
 
 async function openBackend(token, search, catalog) {
-  if (isLiveToken(token)) return createLiveQrBackend(token)
+  if (isVisitToken(token)) return createLiveQrBackend(token)
   if (IS_STAGING || !demoTableIdOf(token)) return null
   // Demo adresi yalnızca POS kurulu değilken (veya açıkça ?demo ile) çalışır.
   if (await detectPosMode(supabase, search) === 'live') return null
   return createDemoBackend({ catalogItems: catalog.items, store: createBrowserDemoStore() }).qr(token)
 }
 
-export function useQrOrdering(token) {
+// token: QR okutunca alınan süreli bilet (canlı) veya demo masa kodu. Bilet yoksa müşteriden QR okutması istenir.
+export function useQrOrdering(token, { stateKey: visitStateKey = null } = {}) {
   const { search } = useLocation()
-  const stateKey = `${token}${demoTableIdOf(token) ? `:${new URLSearchParams(search).get('musteri') ?? ''}` : ''}`
+  const stateKey = visitStateKey ?? `${token}${demoTableIdOf(token) ? `:${new URLSearchParams(search).get('musteri') ?? ''}` : ''}`
   const [initial] = useState(() => loadQrState(stateKey))
   // Eski yarım gönderim sessizce yollanmaz, yalnızca durum sorgusunda kalır.
   const [submissions, setSubmissions] = useState(() => initial.submissions.map(sub => sub.pending && !isFreshPending(sub) ? { key: sub.key, createdAt: sub.createdAt } : sub))
@@ -38,6 +39,7 @@ export function useQrOrdering(token) {
   const [attempt, setAttempt] = useState(0)
   const [tableLabel, setTableLabel] = useState(null)
   const [blocked, setBlocked] = useState(null)
+  const [expiresAt, setExpiresAt] = useState(null)
   const [catalog, setCatalog] = useState(null)
   const [backend, setBackend] = useState(null)
   const [cart, dispatch] = useReducer(cartReducer, initial.cart ?? emptyCart)
@@ -57,14 +59,16 @@ export function useQrOrdering(token) {
         const nextCatalog = await loadCatalog(supabase, getItemImage)
         const next = await openBackend(token, search, nextCatalog)
         if (!active) return
-        if (!next) return setStatus('invalid')
+        if (!next) return setStatus(token ? 'invalid' : 'scan')
         const table = await next.getTable()
         if (!active) return
+        if (table.state === 'expired') clearVisit()
         if (table.state !== 'ready') return setStatus(table.state)
         setCatalog(nextCatalog)
         setBackend(next)
         setTableLabel(table.label)
         setBlocked(table.blocked ?? null)
+        setExpiresAt(Number.isFinite(table.expiresAt) ? table.expiresAt : null)
         setStatus('ready')
       } catch {
         if (active) setStatus('unreachable')
@@ -74,6 +78,18 @@ export function useQrOrdering(token) {
     return () => { active = false }
     // Sorgu dizesi açılış dışında değişmez.
   }, [token, attempt]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bilet süresi dolunca sayfa açık kalsa da sipariş kapanır; müşteri QR'ı tekrar okutur (sunucu da reddeder).
+  const expire = useCallback(() => {
+    clearVisit()
+    setStatus('expired')
+    setSheet(null)
+  }, [])
+  useEffect(() => {
+    if (status !== 'ready' || !expiresAt) return undefined
+    const timer = setTimeout(expire, Math.max(0, Math.min(expiresAt - Date.now(), 2 ** 31 - 1)))
+    return () => clearTimeout(timer)
+  }, [status, expiresAt, expire])
 
   useEffect(() => {
     if (status !== 'unreachable') return
@@ -122,10 +138,11 @@ export function useQrOrdering(token) {
       setSubmissions(list => list.filter(item => item.key !== sub.key))
       setRejectCode(result.code)
       setSubmitState('rejected')
+      if (VISIT_ERRORS.includes(result.code)) expire()
     } else {
       setSubmitState('uncertain')
     }
-  }, [refresh])
+  }, [refresh, expire])
 
   const pending = submissions.find(sub => sub.pending)
 

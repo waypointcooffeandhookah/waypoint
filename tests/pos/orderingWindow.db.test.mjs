@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON, qrVisit } from './db-harness.mjs'
 
 const db = await createDb()
 await db.exec(readFileSync(new URL('../../supabase/staging/04_multichannel_seed.sql', import.meta.url), 'utf8'))
@@ -18,8 +18,8 @@ let phone = 0
 const base = { dine_in_enabled: true, pickup_enabled: true, delivery_enabled: true, accepting_orders: true, auto_open_order_type: true, hours_enabled: false, operating_hours: {} }
 const save = settings => rpc(db, admin, 'update_ordering_settings', { p_settings: JSON.stringify({ ...base, ...settings }) })
 const config = () => rpc(db, ANON, 'get_ordering_config', {})
-const qr = () => rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items })
-const qrError = () => rpcError(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items })
+const qr = async () => rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items })
+const qrError = async () => rpcError(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items })
 const online = type => ['place_online_order', { p_fulfillment_type: type, p_idempotency_key: randomUUID(), p_items: items,
   p_customer: JSON.stringify({ name: 'Pencere Test', phone: `0545${String(++phone).padStart(7, '0')}` }),
   p_address: type === 'delivery' ? JSON.stringify({ street: 'Kurgusal Cadde 1', district: 'Deneme', postal_code: '99001' }) : null }]

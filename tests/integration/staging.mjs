@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { STAGING_REF } from '../../src/supabaseTarget.js'
 import { READY_NOTIFICATION_SELECT, mapNotificationRow } from '../../src/pos/waiter/notifications.js'
+import { qrVisitFor } from '../e2e/qrVisit.mjs'
 
 const root = new URL('../../', import.meta.url)
 const env = Object.fromEntries(readFileSync(new URL('.env.staging.local', root), 'utf8').split(/\r?\n/).filter(Boolean).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]))
@@ -28,7 +29,7 @@ const expect = (ok, message) => { if (!ok) throw new Error(message) }
 const NOTE = 'TEST staging.mjs'
 const COFFEE = '5e000000-0000-4000-8000-000000000101', ESPRESSO = '5e000000-0000-4000-8000-000000000104', SOLD_OUT = '5e000000-0000-4000-8000-000000000302'
 const line = (id, quantity) => ({ menu_item_id: id, quantity })
-const place = (table, items, key = randomUUID(), extra = {}, db = anon) => db.rpc('place_qr_order', { p_table_token: tokens[table], p_idempotency_key: key, p_items: items, p_note: NOTE, ...extra })
+const place = async (table, items, key = randomUUID(), extra = {}, db = anon) => db.rpc('place_qr_order', { p_table_token: await qrVisitFor(db, tokens[table]), p_idempotency_key: key, p_items: items, p_note: NOTE, ...extra })
 const denied = ({ error, data }, label) => {
   expect(error, `${label}: reddedilmedi (${JSON.stringify(data)})`)
   expect(['42501', 'PGRST202', 'PGRST106'].includes(error.code) || /forbidden|permission denied/.test(error.message), `${label}: beklenmeyen hata ${error.code} ${error.message}`)
@@ -76,7 +77,7 @@ await step('Anonim: personel fonksiyonları ve pos_private kapalı', async () =>
 })
 
 await step('QR: geçersiz masa kodu ve hatalı satırlar reddedilir, kayıt oluşmaz', async () => {
-  const invalid = await anon.rpc('place_qr_order', { p_table_token: 'a'.repeat(64), p_idempotency_key: randomUUID(), p_items: [line(COFFEE, 1)] })
+  const invalid = await anon.rpc('start_qr_visit', { p_table_token: 'a'.repeat(64) })
   expect(/invalid_table/.test(invalid.error?.message), 'geçersiz kod kabul edildi')
   expect(/empty_order/.test((await place('Masa 2', [])).error?.message), 'boş sipariş')
   expect(/invalid_quantity/.test((await place('Masa 2', [line(COFFEE, 21)])).error?.message), 'adet sınırı')
@@ -112,11 +113,11 @@ await step('Senaryo: ikinci müşteri aynı masaya sipariş verir, ilkini görem
   expect(!error, error?.message)
   expect(Number(data.subtotal_cents) === 30000, `tutar ${data.subtotal_cents}`)
   scenario.second = data; scenario.secondKey = key
-  const mine = await other.rpc('get_qr_orders', { p_table_token: tokens['Masa 5'], p_idempotency_keys: [key] })
+  const mine = await other.rpc('get_qr_orders', { p_table_token: await qrVisitFor(anon, tokens['Masa 5']), p_idempotency_keys: [key] })
   expect(mine.data.length === 1 && mine.data[0].order_id === data.order_id, 'kendi siparişi')
-  const none = await other.rpc('get_qr_orders', { p_table_token: tokens['Masa 5'], p_idempotency_keys: [randomUUID()] })
+  const none = await other.rpc('get_qr_orders', { p_table_token: await qrVisitFor(anon, tokens['Masa 5']), p_idempotency_keys: [randomUUID()] })
   expect(none.data.length === 0, 'başkasının siparişi göründü')
-  const wrongTable = await other.rpc('get_qr_orders', { p_table_token: tokens['Masa 6'], p_idempotency_keys: [key] })
+  const wrongTable = await other.rpc('get_qr_orders', { p_table_token: await qrVisitFor(anon, tokens['Masa 6']), p_idempotency_keys: [key] })
   expect(wrongTable.data.length === 0, 'başka masa kodu ile sipariş göründü')
 })
 
@@ -135,7 +136,7 @@ await step('Eşzamanlı: 6 oturumdan farklı siparişler kaybolmaz', async () =>
   const answers = await Promise.all(keys.map(key => place('Masa 9', [line(COFFEE, 1)], key, {}, client())))
   const errors = answers.filter(a => a.error).map(a => a.error.message)
   expect(!errors.length, errors.join('; '))
-  const seen = await anon.rpc('get_qr_orders', { p_table_token: tokens['Masa 9'], p_idempotency_keys: keys })
+  const seen = await anon.rpc('get_qr_orders', { p_table_token: await qrVisitFor(anon, tokens['Masa 9']), p_idempotency_keys: keys })
   expect(seen.data.length === 6 && new Set(seen.data.map(o => o.order_number)).size === 6, `${seen.data?.length} sipariş`)
 })
 
@@ -296,7 +297,7 @@ if (!creds) {
     await until(() => waiterEvents.some(e => e.new?.id === id && e.new?.status === 'ready'), 'garsonda hazır')
     const { data } = await waiter.from('orders').select('status').eq('id', id).single()
     expect(data.status === 'ready', data.status)
-    const customer = await anon.rpc('get_qr_orders', { p_table_token: tokens['Masa 5'], p_idempotency_keys: [scenario.firstKey] })
+    const customer = await anon.rpc('get_qr_orders', { p_table_token: await qrVisitFor(anon, tokens['Masa 5']), p_idempotency_keys: [scenario.firstKey] })
     expect(customer.data[0].status === 'ready', 'müşteri durumu')
   })
 

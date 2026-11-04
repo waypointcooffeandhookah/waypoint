@@ -41,6 +41,7 @@ export async function createDb() {
   await db.exec(read('supabase/migrations/20261102120000_pos_ordering_config_channels.sql'))
   await db.exec(read('supabase/migrations/20261102150000_pos_ordering_window.sql'))
   await db.exec(read('supabase/migrations/20261103090000_pos_web_push.sql'))
+  await db.exec(read('supabase/migrations/20261105090000_pos_qr_visits.sql'))
   // Mevcut kurulum betiği menü tablolarını Supabase varsayılan yetkileriyle bıraktığı için
   // testte de okumayı açıyoruz (supabase_security.sql ile aynı).
   await db.exec('grant select on public.categories, public.menu_items to anon, authenticated')
@@ -94,3 +95,16 @@ export async function menuItem(db, name) {
   const { rows: [item] } = await db.query('select id, price from public.menu_items where name = $1', [name])
   return item
 }
+
+// QR ziyaret bileti (20261105090000_pos_qr_visits.sql): masa kodu yalnızca bilet almak için kullanılır.
+// Test düzeneği bileti doğrudan yazar; start_qr_visit kuralları qrVisits.db.test.mjs'te ayrıca sınanır.
+export async function qrVisit(db, tableToken, { minutes = 60, issuedAt = 'now()' } = {}) {
+  const visit = `qv_${randomUUID().replaceAll('-', '')}${randomUUID().replaceAll('-', '')}`
+  await db.query(`insert into pos_private.qr_visits(token_hash, table_id, table_token_hash, issued_at, expires_at)
+    select pos_private.sha256_hex($1), table_id, pos_private.sha256_hex(token), ${issuedAt}, ${issuedAt} + make_interval(mins => $2)
+      from public.table_qr_tokens where token = $3`, [visit, minutes, tableToken])
+  return visit
+}
+
+// Eski bir migration yeniden çalıştırılınca QR RPC'leri eski hâline döner; testler ardından bunu yeniden uygular.
+export const reapplyQrVisits = db => db.exec(read('supabase/migrations/20261105090000_pos_qr_visits.sql'))

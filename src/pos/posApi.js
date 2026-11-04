@@ -45,6 +45,8 @@ export const assignOrderCourier = (orderId, courierName) => call('assign_order_c
 export const recordFulfillmentPayment = (orderId, method) => call('record_fulfillment_payment', { p_order_id: orderId, p_method: method })
 
 export const getQrTable = tableToken => call('get_qr_table', { p_table_token: tableToken })
+export const startQrVisit = tableToken => call('start_qr_visit', { p_table_token: tableToken })
+export const getQrVisit = visit => call('get_qr_visit', { p_visit: visit })
 export const getQrOrders = (tableToken, keys) => call('get_qr_orders', { p_table_token: tableToken, p_idempotency_keys: keys })
 export const openTableSession = tableId => call('open_table_session', { p_table_id: tableId })
 export const updateOrderStatus = (orderId, status, reason) => call('update_order_status', { p_order_id: orderId, p_status: status, p_reason: reason || null })

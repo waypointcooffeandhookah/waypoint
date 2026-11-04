@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { PRODUCTION_REF, STAGING_REF } from '../../src/supabaseTarget.js'
 import { READY_NOTIFICATION_SELECT } from '../../src/pos/waiter/notifications.js'
 import { FULFILLMENT_SELECT } from '../../src/pos/fulfillment/fulfillmentOrders.js'
+import { qrVisitFor } from '../e2e/qrVisit.mjs'
 
 const root = new URL('../../', import.meta.url)
 const env = Object.fromEntries(readFileSync(new URL('.env.staging.local', root), 'utf8').split(/\r?\n/).filter(Boolean).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]))
@@ -88,7 +89,7 @@ await step('Katalog: üretimle aynı ürün, kategori, fiyat ve stok; görseller
 })
 
 await step('1. Masa 5 siparişi mutfağa ve masa adisyonuna gider', async () => {
-  const { data, error } = await anon.rpc('place_qr_order', { p_table_token: tokens['Masa 5'], p_idempotency_key: randomUUID(), p_items: [line(COFFEE, 2)], p_note: 'TEST multichannel' })
+  const { data, error } = await anon.rpc('place_qr_order', { p_table_token: await qrVisitFor(anon, tokens['Masa 5']), p_idempotency_key: randomUUID(), p_items: [line(COFFEE, 2)], p_note: 'TEST multichannel' })
   expect(!error, error?.message)
   shared.dine = data
   const row = await kitchen.from('orders').select('fulfillment_type, bill_id, restaurant_tables(label)').eq('id', data.order_id).single()

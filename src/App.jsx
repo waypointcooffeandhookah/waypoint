@@ -36,7 +36,8 @@ export default function App() {
       <Route path="/admin/:section" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
       <Route path="/garson/*" element={<WaiterApp />} />
       <Route path="/mutfak" element={<KitchenApp />} />
-      <Route path="/masa/:tableToken" element={<QrOrderRoute />} />
+      <Route path="/masa" element={<QrOrderRoute key="visit" />} />
+      <Route path="/masa/:tableToken" element={<QrOrderRoute key="scan" />} />
       <Route path="/siparis/:token" element={<OrderTrackingPage />} />
       <Route path="/siparisler" element={<FulfillmentApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />

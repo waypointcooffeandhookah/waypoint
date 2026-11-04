@@ -2,7 +2,7 @@
 import { test, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON, qrVisit } from './db-harness.mjs'
 
 let db, waiter, kitchen, kofte
 before(async () => {
@@ -13,7 +13,7 @@ before(async () => {
 })
 
 const items = (quantity, extra = {}) => JSON.stringify([{ menu_item_id: kofte.id, quantity, note: null, ...extra }])
-const place = (token, key = randomUUID(), quantity = 1, extra) => rpc(db, ANON, 'place_qr_order', { p_table_token: token, p_idempotency_key: key, p_items: items(quantity, extra) })
+const place = async (token, key = randomUUID(), quantity = 1, extra) => rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, token), p_idempotency_key: key, p_items: items(quantity, extra) })
 
 test('anonim müşteri masa kodu ile sipariş verir; mutfakta QR, adisyonda garsonla birlikte', async () => {
   const table = await addTable(db, 'Masa 5')
@@ -35,10 +35,10 @@ test('müşteri yalnızca kendi anahtarının ve masasının siparişini görür
   await place(a.token, key)
   await place(a.token, other)
 
-  const mine = await rpc(db, ANON, 'get_qr_orders', { p_table_token: a.token, p_idempotency_keys: [key] })
+  const mine = await rpc(db, ANON, 'get_qr_orders', { p_table_token: await qrVisit(db, a.token), p_idempotency_keys: [key] })
   assert.deepEqual(mine.map(o => o.idempotency_key), [key])
   assert.equal(mine[0].items[0].quantity, 1)
-  assert.deepEqual(await rpc(db, ANON, 'get_qr_orders', { p_table_token: b.token, p_idempotency_keys: [key] }), [])
+  assert.deepEqual(await rpc(db, ANON, 'get_qr_orders', { p_table_token: await qrVisit(db, b.token), p_idempotency_keys: [key] }), [])
   await assert.rejects(as(db, ANON, tx => tx.query('select * from public.orders')), /permission denied/)
 
   assert.match(await rpcError(db, ANON, 'get_qr_table', { p_table_token: 'f'.repeat(64) }), /invalid_table/)

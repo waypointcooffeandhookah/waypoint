@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { PRODUCTION_REF, STAGING_REF } from '../../src/supabaseTarget.js'
+import { qrVisitFor } from './qrVisit.mjs'
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173/waypoint'
 const BROWSER = [process.env.E2E_BROWSER, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/usr/bin/google-chrome'].find(path => path && existsSync(path))
@@ -245,7 +246,7 @@ try {
     await sleep(1200)
     expect((await config()).blocked === 'ordering_closed', 'yapılandırma')
     expect(code(await anon.rpc('place_online_order', orderArgs())) === 'ordering_closed', 'çevrimiçi sipariş alındı')
-    expect(code(await anon.rpc('place_qr_order', { p_table_token: tokens['Masa 6'], p_idempotency_key: randomUUID(), p_items: [{ menu_item_id: COFFEE, quantity: 1 }] })) === 'ordering_closed', 'QR sipariş alındı')
+    expect(code(await anon.rpc('place_qr_order', { p_table_token: await qrVisitFor(anon, tokens['Masa 6']), p_idempotency_key: randomUUID(), p_items: [{ menu_item_id: COFFEE, quantity: 1 }] })) === 'ordering_closed', 'QR sipariş alındı')
     await newVisit(customer)
     await enterMenu(customer)
     await customer.until(`document.querySelector('.editorial-card')`, 'menü')
@@ -352,7 +353,7 @@ try {
     expect(second !== first, 'kod yenilenmedi')
     expect(code(await anon.rpc('get_qr_table', { p_table_token: first })) === 'invalid_table', 'eski kod çalıştı')
     await adminPage.click('.ad-dialog .pos-icon-btn')
-    const placed = await anon.rpc('place_qr_order', { p_table_token: second, p_idempotency_key: randomUUID(), p_items: [{ menu_item_id: COFFEE, quantity: 1 }], p_note: 'TEST admin' })
+    const placed = await anon.rpc('place_qr_order', { p_table_token: await qrVisitFor(anon, second), p_idempotency_key: randomUUID(), p_items: [{ menu_item_id: COFFEE, quantity: 1 }], p_note: 'TEST admin' })
     expect(!placed.error, placed.error?.message)
     await adminPage.until(`document.querySelector('[data-table="${label}"] .ad-force-close')`, 'açık adisyon', 25000)
     await admin.rpc('update_order_status', { p_order_id: placed.data.order_id, p_status: 'cancelled', p_reason: 'test' })

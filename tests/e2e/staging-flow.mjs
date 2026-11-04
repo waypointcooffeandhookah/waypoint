@@ -83,6 +83,16 @@ async function step(name, fn) {
 }
 const expect = (ok, message) => { if (!ok) throw new Error(message) }
 
+// Yenileme / yeniden açma: karşılama ekranı çıkarsa geçilir.
+const reopen = async (page, path) => {
+  await page.go(path)
+  await page.until(`[...document.querySelectorAll('button')].some(b=>b.innerText.includes('MENÜYÜ KEŞFET'))||document.querySelector('.menu-search')`, 'sayfa')
+  if (await page.ev(`!!document.querySelector('.hero-viewport')`)) await page.clickText('MENÜYÜ KEŞFET')
+  await page.until(`document.querySelector('.menu-search')&&!document.querySelector('.hero-viewport')`, 'menü')
+  await sleep(800)
+  if (await page.ev(`!!document.querySelector('.promotion-close')`)) await page.click('.promotion-close')
+}
+
 const enterMenu = async (page, path) => {
   await page.go(path)
   await page.until(`[...document.querySelectorAll('button')].some(b=>b.innerText.includes('MENÜYÜ KEŞFET'))`, 'karşılama ekranı')
@@ -119,6 +129,19 @@ try {
     expect(!await customer.ev(`!!document.querySelector('.staging-badge')`), 'test rozeti görünüyor')
     expect(!await customer.ev(`!!document.querySelector('.qr-banner-demo')`), 'demo modunda')
     return `güvenli bağlam: ${await customer.ev('window.isSecureContext')}, randomUUID: ${await customer.ev(`typeof crypto.randomUUID`)}`
+  })
+
+  await step('Süreli bilet: masa kodu adresten silinir; sayfa yenileme aynı bileti kullanır, süreyi uzatmaz', async () => {
+    const path = await customer.ev('location.pathname')
+    expect(path.endsWith('/masa') && !path.includes(TOKEN_5), `adres: ${path}`)
+    const visit = () => customer.ev(`JSON.parse(sessionStorage.getItem('waypoint-qr-visit-v1')||'null')`)
+    const before = await visit()
+    expect(before?.visit?.startsWith('qv_') && before.expiresAt > Date.now() + 50 * 60000 && before.expiresAt < Date.now() + 61 * 60000, 'bilet ~1 saat')
+    await reopen(customer, '/masa')
+    await customer.until(`document.querySelector('.qr-table-chip')?.innerText.includes('Masa 5')`, 'yenilemeden sonra Masa 5')
+    const after = await visit()
+    expect(after.visit === before.visit && after.expiresAt === before.expiresAt, 'yenileme yeni bilet aldı veya süreyi uzattı')
+    return `bitiş: ${new Date(before.expiresAt).toLocaleTimeString('tr-TR')}`
   })
 
   await step('Müşteri: 2 Americano sipariş eder; çift dokunuş tek sipariş', async () => {
@@ -186,6 +209,16 @@ try {
     await second.until(`document.querySelector('.qr-banner')`, 'uyarı')
     await second.until(`document.querySelector('.editorial-card')`, 'ürünler')
     expect(!await second.ev(`!!document.querySelector('.qr-add')`), 'ekleme düğmesi göründü')
+  })
+
+  await step('Süresi dolmuş/geçersiz bilet veya bilet yok: "QR kodu tekrar okutun" uyarısı, sipariş kapalı', async () => {
+    await second.ev(`sessionStorage.setItem('waypoint-qr-visit-v1', JSON.stringify({ visit: 'qv_${'0'.repeat(64)}', tableKey: 'x', label: 'Masa 5', expiresAt: Date.now() + 3600000 }))`)
+    await reopen(second, '/masa')
+    await second.until(`document.querySelector('.qr-banner-scan')?.innerText.includes('tekrar okutun')`, 'tekrar okut uyarısı')
+    expect(!await second.ev(`!!document.querySelector('.qr-add')`), 'ekleme düğmesi göründü')
+    expect(await second.ev(`sessionStorage.getItem('waypoint-qr-visit-v1')`) === null, 'geçersiz bilet silinmedi')
+    await reopen(second, '/masa')
+    await second.until(`document.querySelector('.qr-banner-scan')?.innerText.includes('okutun')`, 'QR okutun uyarısı')
   })
 
   if (!creds) {

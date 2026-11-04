@@ -58,3 +58,13 @@ personel adımları telefonda/tablette elle izlenir:
 ## 4. Web Push ve fiziksel cihaz testleri
 
 Kurulum adımları, sırlar ve iPhone/Android kilit ekranı testleri: `docs/WEB_PUSH_SETUP.md`.
+
+## 5. Süreli masa bileti (`20261105090000_pos_qr_visits.sql`)
+
+- QR okutulunca masa kodu **1 saatlik bilete** çevrilir ve adresten silinir (`/masa`). Bilet yalnızca o sekmede tutulur.
+- Sayfa yenileme aynı bileti kullanır; süre uzamaz. Süre dolunca, sekme kapanınca, masanın adisyonu kapanınca,
+  masa kodu yenilenince veya masa devre dışı kalınca müşteriden QR'ı **tekrar okutması** istenir (sepet korunur).
+- Kontrolü sunucu yapar: `place_qr_order` çıplak masa koduyla `qr_visit_required`, bitmiş biletle `qr_visit_expired` döner.
+- Bilinen sınır: QR'ın fotoğrafını çeken kişi dışarıda yeni bilet alabilir; bunu yalnızca masa kodunu yenilemek
+  (Yönetim → Masalar → QR kodu → Yenile) veya garsonun masayı açmasını zorunlu kılmak kapatır.
+- Geri alma: `supabase/staging/rollback_qr_visits.sql` (ön yüz de önceki sürüme alınmalı).

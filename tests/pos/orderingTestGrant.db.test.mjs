@@ -4,7 +4,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON, qrVisit } from './db-harness.mjs'
 
 const GRANT_SQL = readFileSync(new URL('../../supabase/staging/06_test_order_grants.sql', import.meta.url), 'utf8')
 const db = await createDb()
@@ -35,7 +35,7 @@ async function rpcWith(secret, user, name, args) {
 }
 const errorOf = async promise => { try { await promise; return 'HATA YOK' } catch (error) { return error.message } }
 const orders = secret => ({
-  qr: () => rpcWith(secret, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items }),
+  qr: async () => rpcWith(secret, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items }),
   pickup: () => rpcWith(secret, ANON, 'place_online_order', { p_fulfillment_type: 'pickup', p_idempotency_key: randomUUID(), p_items: items,
     p_customer: JSON.stringify({ name: 'Yetki Test', phone: `0546${String(++phone).padStart(7, '0')}` }) }),
   delivery: (postal = zone.pc) => rpcWith(secret, ANON, 'place_online_order', { p_fulfillment_type: 'delivery', p_idempotency_key: randomUUID(), p_items: items,

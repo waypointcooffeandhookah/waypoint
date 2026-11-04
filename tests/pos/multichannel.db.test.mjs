@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON, qrVisit } from './db-harness.mjs'
 
 const db = await createDb()
 const admin = await createUser(db, { role: 'admin', name: 'Yönetici' })
@@ -164,7 +164,7 @@ test('iptal: garson paket siparişini iptal edemez; kasiyer yeni siparişi iptal
 
 test('masa siparişi korunur: adisyon, servis ve kapatma aynı çalışır', async () => {
   const table = await addTable(db, 'Masa Çok Kanal')
-  const order = await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items() })
+  const order = await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items() })
   const { rows: [row] } = await db.query('select fulfillment_type, bill_id from public.orders where id = $1', [order.order_id])
   assert.equal(row.fulfillment_type, 'dine_in')
   assert.ok(row.bill_id)

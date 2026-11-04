@@ -56,3 +56,40 @@ export const isFreshPending = (sub, now = Date.now()) => sub.pending && now - su
 
 export const STATUS_STEPS = ['new', 'preparing', 'ready', 'served']
 export const CUSTOMER_STATUS = { new: 'Alındı', preparing: 'Hazırlanıyor', ready: 'Hazır', served: 'Servis edildi', cancelled: 'İptal edildi' }
+
+// ── Süreli masa bileti (20261105090000_pos_qr_visits.sql) ──
+// QR okutulunca masa kodu bilete çevrilir ve adresten silinir. Bilet yalnızca bu sekmede (sessionStorage) tutulur:
+// sayfa yenilemek süreyi uzatmaz; sekme kapanınca veya süre dolunca müşteri QR'ı tekrar okutur.
+const VISIT_KEY = 'waypoint-qr-visit-v1'
+export const VISIT_ERRORS = ['qr_visit_expired', 'qr_visit_invalid', 'qr_visit_required']
+export const isVisitToken = token => /^qv_[0-9a-f]{64}$/.test(token ?? '')
+export const visitStateKey = tableKey => `table:${tableKey}`
+
+export function saveVisit(data, storage = globalThis.sessionStorage) {
+  const visit = { visit: data.visit, tableKey: data.table_key, label: data.table_label, expiresAt: Date.parse(data.expires_at) }
+  if (!isVisitToken(visit.visit) || !visit.tableKey || !Number.isFinite(visit.expiresAt)) return null
+  try { storage.setItem(VISIT_KEY, JSON.stringify(visit)) } catch { /* Depolama kapalıysa bilet yalnızca bu açılışta geçerlidir. */ }
+  return visit
+}
+
+export function loadVisit(now = Date.now(), storage = globalThis.sessionStorage) {
+  try {
+    const visit = JSON.parse(storage.getItem(VISIT_KEY))
+    if (!visit || !isVisitToken(visit.visit) || !visit.tableKey) return null
+    return { ...visit, expired: !(visit.expiresAt > now) }
+  } catch { return null }
+}
+
+export function clearVisit(storage = globalThis.sessionStorage) {
+  try { storage.removeItem(VISIT_KEY) } catch { /* yok sayılır */ }
+}
+
+export const errorCode = error => /^pos:([a-z_]+)/.exec(error?.message ?? '')?.[1] ?? null
+
+// start_qr_visit / get_qr_visit yanıtı → ekran durumu.
+export function classifyVisit({ data, error }) {
+  if (!error) return { state: 'ready', label: data?.table_label, blocked: data?.blocked ?? null, expiresAt: Date.parse(data?.expires_at) }
+  const code = errorCode(error)
+  if (VISIT_ERRORS.includes(code)) return { state: 'expired' }
+  return classifyTable({ data, error })
+}

@@ -1,7 +1,7 @@
 import { test, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, readMigration, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, readMigration, ANON, qrVisit, reapplyQrVisits } from './db-harness.mjs'
 
 let db, admin, waiter, kitchen, cashier, outsider, kofte, kunefe, corba
 before(async () => {
@@ -44,7 +44,7 @@ test('garson siparişi oluşur, mutfak görür ve masa adisyonu otomatik güncel
 test('aynı masadan müşteri siparişi aynı mutfak akışına ve aynı adisyona düşer', async () => {
   const table = await addTable(db, 'Masa 6')
   await rpc(db, waiter, 'place_staff_order', { p_table_id: table.id, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
-  const qr = await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([kunefe, 1]) })
+  const qr = await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([kunefe, 1]) })
   assert.equal(qr.source, 'qr')
 
   const { rows } = await as(db, kitchen, tx => tx.query('select source, bill_id from public.orders where table_id = $1', [table.id]))
@@ -57,8 +57,8 @@ test('aynı masadan müşteri siparişi aynı mutfak akışına ve aynı adisyon
 test('dört müşteri aynı anda sipariş verir: dört ayrı sipariş, tek oturum, tek adisyon', async () => {
   const table = await addTable(db, 'Masa 7')
   const carts = [items([corba, 2]), items([kofte, 1]), items([kunefe, 1]), items([corba, 2])]
-  const results = await Promise.all(carts.map(cart =>
-    rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: cart })))
+  const results = await Promise.all(carts.map(async cart =>
+    rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: cart })))
 
   assert.equal(new Set(results.map(r => r.order_id)).size, 4)
   assert.equal(new Set(results.map(r => r.order_number)).size, 4)
@@ -71,7 +71,7 @@ test('dört müşteri aynı anda sipariş verir: dört ayrı sipariş, tek oturu
 
 test('çift tıklama / tekrar gönderim yalnızca bir sipariş oluşturur', async () => {
   const table = await addTable(db, 'Masa 8')
-  const args = { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([kunefe, 1]) }
+  const args = { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([kunefe, 1]) }
   const [a, b] = await Promise.all([rpc(db, ANON, 'place_qr_order', args), rpc(db, ANON, 'place_qr_order', args)])
   assert.equal(a.order_id, b.order_id)
   assert.deepEqual([a.duplicate, b.duplicate].sort(), [false, true])
@@ -85,16 +85,16 @@ test('aynı anahtar başka masada kullanılamaz', async () => {
   const t1 = await addTable(db, 'Masa 9')
   const t2 = await addTable(db, 'Masa 10')
   const key = randomUUID()
-  await rpc(db, ANON, 'place_qr_order', { p_table_token: t1.token, p_idempotency_key: key, p_items: items([corba, 1]) })
-  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: t2.token, p_idempotency_key: key, p_items: items([corba, 1]) }), /idempotency_key_conflict/)
+  await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, t1.token), p_idempotency_key: key, p_items: items([corba, 1]) })
+  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, t2.token), p_idempotency_key: key, p_items: items([corba, 1]) }), /idempotency_key_conflict/)
 })
 
 test('bağlantı koptuktan sonra müşteri siparişini anahtarıyla doğrular', async () => {
   const table = await addTable(db, 'Masa 11')
   const key = randomUUID()
-  assert.deepEqual(await rpc(db, ANON, 'get_qr_orders', { p_table_token: table.token, p_idempotency_keys: [key] }), [])
-  await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: key, p_items: items([kofte, 1, 'soğansız']) })
-  const [found] = await rpc(db, ANON, 'get_qr_orders', { p_table_token: table.token, p_idempotency_keys: [key, randomUUID()] })
+  assert.deepEqual(await rpc(db, ANON, 'get_qr_orders', { p_table_token: await qrVisit(db, table.token), p_idempotency_keys: [key] }), [])
+  await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: key, p_items: items([kofte, 1, 'soğansız']) })
+  const [found] = await rpc(db, ANON, 'get_qr_orders', { p_table_token: await qrVisit(db, table.token), p_idempotency_keys: [key, randomUUID()] })
   assert.equal(found.idempotency_key, key)
   assert.deepEqual(found.items, [{ name: 'Izgara Köfte', quantity: 1, line_total_cents: 22000, note: 'soğansız' }])
   const staffView = await rpc(db, waiter, 'get_order_by_idempotency_key', { p_idempotency_key: key })
@@ -104,21 +104,21 @@ test('bağlantı koptuktan sonra müşteri siparişini anahtarıyla doğrular', 
 test('tarayıcıdan gelen fiyat, toplam ve masa bilgisi yok sayılır', async () => {
   const table = await addTable(db, 'Masa 12')
   const tampered = JSON.stringify([{ menu_item_id: kofte.id, quantity: 1, price: 1, unit_price_cents: 1, table_id: randomUUID() }])
-  const order = await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: tampered })
+  const order = await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: tampered })
   assert.equal(order.subtotal_cents, 22000)
   assert.equal(order.table_label, 'Masa 12')
 })
 
 test('geçersiz ürün, adet ve masa anahtarı reddedilir; hiçbir kayıt yarım kalmaz', async () => {
   const table = await addTable(db, 'Masa 13')
-  const call = p_items => rpcError(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items })
+  const call = async p_items => rpcError(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items })
   assert.match(await call(JSON.stringify([{ menu_item_id: randomUUID(), quantity: 1 }])), /item_unavailable/)
   assert.match(await call(JSON.stringify([{ menu_item_id: 'drop table', quantity: 1 }])), /invalid_line/)
   assert.match(await call(items([kofte, 0])), /invalid_quantity/)
   assert.match(await call(items([kofte, 21])), /invalid_quantity/)
   assert.match(await call(items([kofte, 1.5])), /invalid_line|invalid_quantity/)
   assert.match(await call('[]'), /empty_order/)
-  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: 'a'.repeat(64), p_idempotency_key: randomUUID(), p_items: items([kofte, 1]) }), /invalid_table/)
+  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: 'a'.repeat(64), p_idempotency_key: randomUUID(), p_items: items([kofte, 1]) }), /qr_visit_required/, 'çıplak masa kodu artık sipariş vermez')
 
   await db.query('update public.menu_items set is_available = false where id = $1', [kunefe.id])
   assert.match(await call(items([corba, 1], [kunefe, 1])), /item_unavailable/)
@@ -133,9 +133,9 @@ test('geçersiz ürün, adet ve masa anahtarı reddedilir; hiçbir kayıt yarım
 test('QR sipariş hız sınırı uygulanır', async () => {
   const table = await addTable(db, 'Masa 14')
   for (let i = 0; i < 12; i++) {
-    await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
+    await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
   }
-  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) }), /rate_limited/)
+  assert.match(await rpcError(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([corba, 1]) }), /rate_limited/)
   // Garson siparişi müşteri hız sınırından etkilenmez.
   await rpc(db, waiter, 'place_staff_order', { p_table_id: table.id, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
 })
@@ -227,7 +227,7 @@ test('ödeme kaydı, fazla ödeme engeli ve masa kapatma', async () => {
   assert.match(await rpcError(db, waiter, 'update_order_status', { p_order_id: order.order_id, p_status: 'cancelled' }), /bill_closed|invalid_transition|forbidden/)
 
   // Sonraki müşteri siparişi yeni oturum ve yeni adisyon açar.
-  await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
+  await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
   const [next] = await bill(table.id)
   assert.notEqual(next.bill_id, bill_id)
   assert.equal(Number(next.total_cents), 7500)
@@ -235,7 +235,7 @@ test('ödeme kaydı, fazla ödeme engeli ve masa kapatma', async () => {
 
 test('zorla kapatma yalnızca yöneticiye açıktır; QR anahtarı yenilenince eskisi geçersizdir', async () => {
   const table = await addTable(db, 'Masa 19')
-  await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
+  await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
   const [{ session_id }] = await bill(table.id)
   assert.match(await rpcError(db, waiter, 'close_table_session', { p_session_id: session_id, p_force: true }), /forbidden/)
   await rpc(db, admin, 'close_table_session', { p_session_id: session_id, p_force: true })
@@ -270,9 +270,10 @@ test('yönetici RLS üzerinden masa ekler ve QR anahtarı otomatik oluşur; gars
 test('migration tekrar çalıştırılabilir ve veriyi korur', async () => {
   const before = (await db.query('select count(*)::int as n from public.orders')).rows[0].n
   await db.exec(readMigration())
+  await reapplyQrVisits(db)
   assert.equal((await db.query('select count(*)::int as n from public.orders')).rows[0].n, before)
   const table = await addTable(db, 'Masa 99')
-  await rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
+  await rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items([corba, 1]) })
 })
 
 test('personel profili yalnızca yönetici tarafından atanır', async () => {

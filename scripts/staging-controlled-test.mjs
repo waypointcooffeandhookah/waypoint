@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { PRODUCTION_REF, STAGING_REF } from '../src/supabaseTarget.js'
 import { closeTestTable } from '../tests/e2e/tableCleanup.mjs'
+import { qrVisitFor } from '../tests/e2e/qrVisit.mjs'
 
 // API testinin masası; tarayıcı testleri Masa 5 ve Masa 6'yı kullanır. Diğer masalara dokunulmaz.
 const API_TABLE = 'Masa 9'
@@ -101,10 +102,13 @@ try {
 
   const { data: product } = await anon.from('menu_items').select('id, price').gt('price', 0).eq('is_available', true).order('price', { ascending: false }).limit(1).single()
   const lines = [{ menu_item_id: product.id, quantity: 2 }]
+  // Masa kodu yalnızca süreli bilet verir; çıplak kodla sipariş reddedilir.
+  check(code(await tester.rpc('place_qr_order', { p_table_token: tableToken, p_idempotency_key: randomUUID(), p_items: lines })) === 'qr_visit_required', 'basılı masa kodu tek başına sipariş veremiyor')
+  const tableVisit = await qrVisitFor(tester, tableToken)
   const qrKey = randomUUID()
-  const qr = await tester.rpc('place_qr_order', { p_table_token: tableToken, p_idempotency_key: qrKey, p_items: lines, p_note: 'KONTROLLU STAGING TESTI' })
+  const qr = await tester.rpc('place_qr_order', { p_table_token: tableVisit, p_idempotency_key: qrKey, p_items: lines, p_note: 'KONTROLLU STAGING TESTI' })
   check(!qr.error && qr.data?.order_id, `masa QR siparişi alındı (#${qr.data?.order_number ?? code(qr)})`)
-  const again = await tester.rpc('place_qr_order', { p_table_token: tableToken, p_idempotency_key: qrKey, p_items: lines })
+  const again = await tester.rpc('place_qr_order', { p_table_token: tableVisit, p_idempotency_key: qrKey, p_items: lines })
   check(again.data?.order_id === qr.data?.order_id && again.data?.duplicate === true, 'aynı anahtarla tekrar gönderim yeni sipariş üretmedi')
   const customer = { name: 'Staging Test', phone: `0555${String(Date.now()).slice(-7)}` }
   const pickup = await tester.rpc('place_online_order', { p_fulfillment_type: 'pickup', p_idempotency_key: randomUUID(), p_items: lines, p_customer: customer, p_note: 'KONTROLLU STAGING TESTI' })

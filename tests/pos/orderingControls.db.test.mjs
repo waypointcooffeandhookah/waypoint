@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON } from './db-harness.mjs'
+import { createDb, createUser, rpc, rpcError, as, addTable, menuItem, ANON, qrVisit, reapplyQrVisits } from './db-harness.mjs'
 
 const db = await createDb()
 await db.exec(readFileSync(new URL('../../supabase/staging/04_multichannel_seed.sql', import.meta.url), 'utf8'))
@@ -19,9 +19,9 @@ let phone = 0
 const customer = () => JSON.stringify({ name: 'Deneme Kişi', phone: `0544${String(++phone).padStart(7, '0')}` })
 const base = { dine_in_enabled: true, pickup_enabled: true, delivery_enabled: true, accepting_orders: true, auto_open_order_type: true, hours_enabled: false, operating_hours: {} }
 const save = (settings, user = admin) => rpc(db, user, 'update_ordering_settings', { p_settings: JSON.stringify({ ...base, ...settings }) })
-const placeQr = (key = randomUUID()) => rpc(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: key, p_items: items })
+const placeQr = async (key = randomUUID()) => rpc(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: key, p_items: items })
 const placeOnline = (type = 'pickup', key = randomUUID()) => rpc(db, ANON, 'place_online_order', { p_fulfillment_type: type, p_idempotency_key: key, p_items: items, p_customer: customer(), p_address: type === 'delivery' ? JSON.stringify({ street: 'Kurgusal Cadde 1', district: 'Deneme', postal_code: '99001' }) : null })
-const qrError = () => rpcError(db, ANON, 'place_qr_order', { p_table_token: table.token, p_idempotency_key: randomUUID(), p_items: items })
+const qrError = async () => rpcError(db, ANON, 'place_qr_order', { p_table_token: await qrVisit(db, table.token), p_idempotency_key: randomUUID(), p_items: items })
 const onlineError = type => rpcError(db, ANON, 'place_online_order', { p_fulfillment_type: type, p_idempotency_key: randomUUID(), p_items: items, p_customer: customer(), p_address: type === 'delivery' ? JSON.stringify({ street: 'Kurgusal Cadde 1', district: 'Deneme', postal_code: '99001' }) : null })
 const config = () => rpc(db, ANON, 'get_ordering_config', {})
 const hoursAround = (openOffset, closeOffset) => {
@@ -145,6 +145,7 @@ test('migration tekrar çalıştırılabilir, DROP içermez, ayarları korur', a
   // Sonraki migration okuma RPC'lerini yeniler; gerçek sıradaki gibi yeniden uygulanır.
   await db.exec(readFileSync(new URL('../../supabase/migrations/20261102120000_pos_ordering_config_channels.sql', import.meta.url), 'utf8'))
   await db.exec(readFileSync(new URL('../../supabase/migrations/20261102150000_pos_ordering_window.sql', import.meta.url), 'utf8'))
+  await reapplyQrVisits(db)
   await save({})
 })
 
