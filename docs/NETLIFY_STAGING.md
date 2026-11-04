@@ -11,7 +11,7 @@ Ayarlar depodaki `netlify.toml` dosyasından gelir (arayüzdeki değerleri geçe
 |---|---|
 | Production branch | `feature/restaurant-pos` (Site configuration → Build & deploy → Branches) |
 | Branch deploys | Yalnızca production branch |
-| Deploy previews | **Kapalı** ("Don't deploy pull requests"). Betik de `CONTEXT=deploy-preview` derlemeyi reddeder. |
+| Deploy previews | **Kapalı**: `netlify.toml` → `ignore = "node scripts/netlify-ignore.mjs"` PR önizlemelerini ve başka dalları derleme başlamadan atlar (yayın/adres oluşmaz). Arayüzde de "Don't deploy pull requests" seçilebilir; derleme betiği ayrıca `CONTEXT=deploy-preview` derlemeyi reddeder. |
 | Build command | `npm run build:netlify` |
 | Publish directory | `dist-staging` |
 | Node | `NODE_VERSION=22` (`netlify.toml`) |
@@ -46,6 +46,10 @@ Netlify Free parola koruması sunmaz; site adresini bilen herkes menüyü açabi
   (arayüz sepeti gösterir, gönder düğmesi kapalıdır).
 - Garson/mutfak/yönetim ekranları personel girişi ister; personel siparişi alım kapalıyken de çalışır.
 - Masa QR siparişi 64 haneli gizli masa kodu ister (tahmin edilemez); `Referrer-Policy: no-referrer`.
-- Kontrollü test için alım yalnızca **süreli pencere** ile açılır (bkz. `docs/STAGING_TEST_PLAN.md`):
-  süre dolunca sunucu kendiliğinden kapatır; test betiği her durumda kapatır.
+- Kontrollü test alımı herkese AÇMAZ: sunucuda doğrulanan geçici **test yetkisi** kullanılır
+  (`supabase/staging/06_test_order_grants.sql`, bkz. `docs/STAGING_TEST_PLAN.md`). Sır yalnızca test bilgisayarının
+  belleğindedir; sunucuda yalnızca SHA-256 özeti durur; en fazla 60 dk; test sonunda kaldırılır.
+- Aynı veritabanını kullanan her ön yüz (Netlify, eski Cloudflare Pages yayınları, doğrudan API/curl) aynı
+  publishable anahtarı taşır; koruma kaynağa (origin) değil **sunucu kurallarına** dayanır. Bu yüzden herkese açan
+  `open_ordering_window` yerine test yetkisi kullanılır; eski Cloudflare projesi/yayınları kullanılmıyorsa silinmelidir.
 - Hız sınırları: masa başına 5 dakikada 12 QR siparişi; telefon başına 10 dakikada 5, toplam 5 dakikada 60 paket/kurye siparişi.

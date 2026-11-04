@@ -35,6 +35,16 @@ export function checkBranch(env) {
   return { ok: true, host }
 }
 
+// Netlify "ignore" adımı (derleme başlamadan): yalnızca staging dalının production yayını derlenir. PR önizlemeleri ve
+// başka dallar hiç derlenmez; böylece herkese açık deploy-preview adresi de oluşmaz. Bağlam bilinmiyorsa derleme
+// başlar ve checkBranch yine reddeder (iki katmanlı koruma).
+export function netlifyShouldBuild(env) {
+  if (env.PULL_REQUEST === 'true' || (env.REVIEW_ID ?? '') !== '') return { build: false, reason: 'PR önizlemesi (deploy preview) derlenmez' }
+  if (env.CONTEXT && env.CONTEXT !== 'production') return { build: false, reason: `Netlify ${env.CONTEXT} bağlamı derlenmez` }
+  if (env.BRANCH !== STAGING_BRANCH) return { build: false, reason: `yalnızca ${STAGING_BRANCH} derlenir (gelen: ${env.BRANCH || 'yok'})` }
+  return { build: true, reason: `${STAGING_BRANCH} production yayını` }
+}
+
 // viteEnv: Vite'ın staging modunda göreceği VITE_* değerleri (loadEnv), processEnv: tüm derleme ortamı.
 export function checkBuildEnv(viteEnv, processEnv) {
   const errors = []

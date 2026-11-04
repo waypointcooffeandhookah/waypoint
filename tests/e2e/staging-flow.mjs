@@ -6,6 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { STAGING_REF, PRODUCTION_REF } from '../../src/supabaseTarget.js'
+import { installTestGrant } from './testGrant.mjs'
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173/waypoint'
 const BROWSER = [process.env.E2E_BROWSER, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/usr/bin/google-chrome']
@@ -56,6 +57,7 @@ async function openPage() {
     return r.result.result.value
   }
   await cdp('Page.enable'); await cdp('Runtime.enable'); await cdp('Network.enable')
+  await installTestGrant(cdp)
   const page = {
     cdp, ev, onPaused: handler => pausedHandlers.push(handler),
     size: (width, height) => cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 1000 }),

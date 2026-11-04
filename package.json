@@ -22,6 +22,8 @@
     "test:cloudflare:smoke": "node tests/e2e/cloudflare-staging-smoke.mjs",
     "test:netlify:smoke": "node tests/e2e/cloudflare-staging-smoke.mjs",
     "test:staging:controlled": "node scripts/staging-controlled-test.mjs",
+    "backup:staging": "node scripts/staging-backup.mjs",
+    "backup:staging:restore-sql": "node scripts/staging-restore-sql.mjs",
     "staging:menu": "node scripts/staging-import-menu.mjs",
     "staging:staff": "node scripts/staging-create-staff.mjs",
     "push:keys": "node scripts/generate-push-keys.mjs"

@@ -5,6 +5,8 @@
 [build]
   command = "npm run build:netlify"
   publish = "dist-staging"
+  # PR önizlemeleri (herkese açık deploy-preview adresleri) ve başka dallar hiç derlenmez/yayınlanmaz.
+  ignore = "node scripts/netlify-ignore.mjs"
 
 [build.environment]
   NODE_VERSION = "22"

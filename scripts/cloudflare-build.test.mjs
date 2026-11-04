@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PRODUCTION_REF, STAGING_REF } from '../src/supabaseTarget.js'
-import { REDIRECTS, SPA_FALLBACK, checkBranch, detectHost, redirectsFor, checkBuildEnv, headersFile, scanBundle } from './cloudflare-build.lib.mjs'
+import { REDIRECTS, SPA_FALLBACK, checkBranch, detectHost, redirectsFor, checkBuildEnv, headersFile, scanBundle, netlifyShouldBuild } from './cloudflare-build.lib.mjs'
 
 const jwt = claims => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2lnbmF0dXJl`
 const STAGING_URL = `https://${STAGING_REF}.supabase.co`
@@ -79,4 +79,23 @@ test('başlıklar ve yönlendirmeler: noindex, çerçeve yasağı, referrer yok 
   }
   assert.ok(!headers.includes(PRODUCTION_REF))
   assert.match(REDIRECTS, /^\/waypoint\/\* \/:splat 301$/m)
+})
+
+test('Netlify ignore: yalnızca staging dalının production yayını derlenir; PR önizlemeleri ve diğer dallar atlanır', async () => {
+  const build = env => netlifyShouldBuild(env).build
+  assert.equal(build({ BRANCH: 'feature/restaurant-pos', CONTEXT: 'production', PULL_REQUEST: 'false' }), true)
+  assert.equal(build({ BRANCH: 'feature/restaurant-pos' }), true, 'bağlam yoksa derleme başlar, checkBranch reddeder')
+  assert.equal(build({ BRANCH: 'feature/restaurant-pos', CONTEXT: 'deploy-preview', PULL_REQUEST: 'true', REVIEW_ID: '7' }), false)
+  assert.equal(build({ BRANCH: 'feature/restaurant-pos', CONTEXT: 'production', PULL_REQUEST: 'true' }), false)
+  assert.equal(build({ BRANCH: 'feature/restaurant-pos', REVIEW_ID: '12' }), false)
+  for (const context of ['deploy-preview', 'branch-deploy', 'dev']) assert.equal(build({ BRANCH: 'feature/restaurant-pos', CONTEXT: context }), false, context)
+  for (const branch of ['main', 'feature/x', undefined]) assert.equal(build({ BRANCH: branch, CONTEXT: 'production' }), false, String(branch))
+  // Komut çıkış kodları Netlify sözleşmesine uygun: 0 = atla, 1 = derle.
+  const { spawnSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const script = fileURLToPath(new URL('./netlify-ignore.mjs', import.meta.url))
+  const run = env => spawnSync(process.execPath, [script], { env: { ...process.env, PULL_REQUEST: '', REVIEW_ID: '', ...env } }).status
+  assert.equal(run({ BRANCH: 'feature/restaurant-pos', CONTEXT: 'production' }), 1)
+  assert.equal(run({ BRANCH: 'feature/restaurant-pos', CONTEXT: 'deploy-preview', PULL_REQUEST: 'true' }), 0)
+  assert.equal(run({ BRANCH: 'main', CONTEXT: 'production' }), 0)
 })

@@ -6,41 +6,52 @@ staging veritabanıyla uçtan uca doğrulamak. Üretim Supabase'i ve `main` dal�
 ## 0. Değişmez kurallar
 
 - Varsayılan durum: `accepting_orders=false`. Gönderim **sunucuda** reddedilir; arayüz sepeti gösterir, uyarı verir.
-- Müşteri siparişi yalnızca **süreli pencere** ile açılır (`open_ordering_window`, yalnızca yönetici, 1–120 dk).
-  Süre dolunca sunucu kendiliğinden kapatır. Ayarlar ekranından süresiz açmak yalnızca bilinçli yönetici kararıdır.
-- Acil kapatma: Yönetim → Ayarlar → "Sipariş alımı açık" kapat **veya** SQL Editor:
-  `update public.fulfillment_settings set accepting_orders = false where id = 1;`
+- Uçtan uca test müşteri siparişini **herkese açmadan** yapılır: sunucuda doğrulanan geçici test yetkisi
+  (`x-waypoint-test-grant` başlığı). Ön koşul: `supabase/staging/06_test_order_grants.sql` staging'e uygulanmış olmalı.
+- `open_ordering_window` (süreli pencere) alımı herkese açar (Netlify, eski Cloudflare yayınları, doğrudan API);
+  kontrollü test için kullanılmaz.
+- Acil durum: SQL Editor → `select public.revoke_ordering_test_grants();` (yönetici oturumu gerekir) veya
+  `update pos_private.ordering_test_grants set revoked_at = now() where revoked_at is null;`
+  Alımı kapatma: `update public.fulfillment_settings set accepting_orders = false, accepting_orders_until = null where id = 1;`
 
 ## 1. Alım kapalıyken (her zaman çalıştırılabilir)
 
 | Test | Komut | Ne doğrular |
 |---|---|---|
-| Birim + veritabanı | `npm test` | RPC kuralları, yetkiler, hız sınırları, tekrar gönderim, pencere, push kuyruğu |
+| Birim + veritabanı | `npm test` | RPC kuralları, yetkiler, hız sınırları, tekrar gönderim, test yetkisi, yedek geri yükleme, push kuyruğu |
 | Netlify paketi | `npm run build:netlify && npm run test:netlify:smoke` | SPA yenileme, başlıklar, CSP, SW, manifest |
 | Durum | `npm run test:staging:controlled` | Yalnızca durumu yazar; hiçbir şeyi değiştirmez |
 
-## 2. Kontrollü sipariş testi (açık onayla)
+## 2. Kontrollü sipariş testi (test yetkisiyle, açık onayla)
 
 ```bash
-# Netlify adresinde tarayıcı akışlarıyla birlikte, 15 dakikalık pencere:
-E2E_BASE=https://waypointcoffeandhookah.netlify.app npm run test:staging:controlled -- --onay --dakika 15 --e2e multichannel,staging
+E2E_BASE=https://waypointcoffeandhookah.netlify.app npm run test:staging:controlled -- --onay --dakika 20 --e2e multichannel,staging
 ```
 
-Betik: staging hedefini doğrular → yönetici girişi → pencere açar → API ile masa QR + paket + kurye siparişi ve
-tekrar gönderim denetimi → istenen tarayıcı testleri (mutfak, garson, adisyon/ödeme, paket/kurye ekranı) →
-**her durumda** (hata, Ctrl+C) alımı kapatır ve müşteri gibi kapalı olduğunu doğrular.
-Siparişler kurgusal veriyle ve "KONTROLLU STAGING TESTI" notuyla yazılır; silinmez.
+| Adım | Ne olur |
+|---|---|
+| Sır | Bu bilgisayarda 256 bit rastgele üretilir; yalnızca bellekte; ekrana, diske, GitHub'a, pakete yazılmaz |
+| Yetki | Yönetici oturumuyla sunucuya yalnızca SHA-256 özeti kaydedilir; en fazla 60 dk; denetim kaydı |
+| API testi | Yetkisiz isteğin reddi → masa QR + paket + kurye siparişi → tekrar gönderim → bölge dışı adres reddi |
+| Tarayıcı testi | Gerçek Netlify arayüzü; başlık test tarayıcısında yalnızca `*.supabase.co/rest/v1/` isteklerine eklenir |
+| Bitiş (her durumda) | `revoke_ordering_test_grants`; ardından hem yetkisiz hem eski sırla gönderimin reddedildiği doğrulanır |
 
-`test:e2e:admin` pencereye dahil edilmez: ayarları kendisi geçici değiştirip geri yükler; pencere dışında, alım
-kapalıyken çalıştırın (geri yükleme kapalı duruma döner).
+Normal ziyaretçiler test boyunca "Sipariş sistemi geçici olarak kapalı" görür. Siparişler kurgusal veriyle ve
+"KONTROLLU STAGING TESTI" notuyla yazılır; silinmez. Yetki yalnızca kapalı/saat engelini aşar: kanal kapalılığı,
+stok, asgari tutar, teslimat bölgesi, hız sınırları ve tekrar gönderim koruması aynen uygulanır.
 
-## 3. Elle kontrol (pencere açıkken, aynı oturumda)
+`test:e2e:admin` dahil edilmez: ayarları kendisi geçici değiştirip geri yükler.
 
-- [ ] Telefonda masa QR → ürün ekle → gönder → mutfak ekranında görünür → "hazır" → garson ekranında görünür → servis.
+## 3. Elle kontrol (yalnızca personel ekranları; müşteri tarafı test yetkisiyle otomatik)
+
+Müşteri siparişini telefondaki normal tarayıcı veremez (başlık yok; doğru davranış). Siparişleri betik verir;
+personel adımları telefonda/tablette elle izlenir:
+
+- [ ] Betiğin verdiği masa QR siparişi mutfak ekranında görünür → "hazır" → garson ekranında (ve push kuruluysa kilit ekranında) → servis → adisyon.
 - [ ] Paket/gel-al → siparişler ekranında (`/siparisler`) → hazır → teslim → ödeme kaydı.
 - [ ] Kurye → bölge dışı posta kodu reddedilir; bölge içi → asgari tutar → kurye ata → teslim.
 - [ ] Gönder düğmesine iki kez hızlı basma → tek sipariş.
-- [ ] Pencere bitince (veya betik kapatınca) yeni gönderim "Sipariş sistemi geçici olarak kapalı" uyarısı verir.
+- [ ] Test bitince normal tarayıcıdan gönderim "Sipariş sistemi geçici olarak kapalı" uyarısı verir.
 
 ## 4. Web Push (onaydan sonra kurulum)
 
