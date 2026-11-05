@@ -60,6 +60,10 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Çift dokunmada yakınlaştırma ve 300ms gecikme kalkar; iki parmakla yakınlaştırma (erişilebilirlik) açık kalır. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -72,7 +76,9 @@ body {
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari: araç çubuğu açık/kapalıyken gerçek görünür yükseklik */
   overflow-x: hidden;
+  overflow-x: clip; /* kaydırma kabı oluşturmaz: yapışkan başlıklar iOS'ta da çalışır */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -88,6 +94,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 }
 
@@ -249,3 +256,11 @@ textarea.input { resize: vertical; min-height: 80px; }
 .cache-notice { padding: 12px 16px; color: var(--text-primary); background: #243c36; font-size: .85rem; }
 .cache-notice button { color: #5be7c4; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+/* ─── Dokunmatik ekranlar (telefon/tablet) ─── */
+@media (pointer: coarse) {
+  /* iOS, 16px'ten küçük yazı kutusuna dokunulunca sayfayı yakınlaştırır ve geri almaz. */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), textarea, select { font-size: max(16px, 1em) !important; }
+  /* Sabit arka plan iOS'ta desteklenmez ve kaydırırken her karede yeniden boyanır. */
+  body { background-attachment: scroll; }
+}

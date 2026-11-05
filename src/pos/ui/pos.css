@@ -20,9 +20,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--pos-header-gradient);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+  background: var(--pos-header-gradient); /* ~%95 opak: arkasındaki bulanıklık görünmüyordu, kaydırmayı yavaşlatıyordu */
   border-bottom: 1px solid rgba(26, 123, 118, 0.35);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(232, 218, 194, 0.08) inset;
 }
@@ -60,8 +58,15 @@
   color: var(--pos-teal);
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.pos-header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pos-header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; flex-shrink: 0; }
+/* Dar telefonlarda (iPhone SE/mini) personel adı başlığa sığmaz; marka yazısıyla çakışmasın diye gizlenir. */
+@media (max-width: 380px) {
+  .pos-staff-chip { display: none; }
+  .pos-header-row { gap: 8px; padding: 10px 12px; }
+}
 .pos-staff-chip {
   max-width: 40vw;
   overflow: hidden;
@@ -167,7 +172,7 @@
 .pos-chips.dimmed { opacity: 0.5; }
 .pos-chip {
   flex-shrink: 0;
-  min-height: 38px;
+  min-height: 40px;
   padding: 0 16px;
   border-radius: var(--radius-full);
   font: 600 0.82rem 'Inter', sans-serif;

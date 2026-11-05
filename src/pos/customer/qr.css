@@ -200,7 +200,7 @@
 .qr-orders-total strong { font: 800 1.2rem 'Outfit', sans-serif; color: #f8f6f2; }
 
 /* ─── Sipariş türü, ödeme adımı ve takip ─── */
-.qr-channel-chip { cursor: pointer; min-height: 36px; font-family: inherit; }
+.qr-channel-chip { cursor: pointer; min-height: 40px; font-family: inherit; }
 .hero-shell .qr-channel-chip { display: none; }
 .qr-channel-lead { margin: 0 0 12px; color: var(--text-secondary); font-size: 0.9rem; }
 .qr-channels { display: flex; flex-direction: column; gap: 10px; }

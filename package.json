@@ -24,7 +24,8 @@
     "backup:staging:restore-sql": "node scripts/staging-restore-sql.mjs",
     "staging:menu": "node scripts/staging-import-menu.mjs",
     "staging:staff": "node scripts/staging-create-staff.mjs",
-    "push:keys": "node scripts/generate-push-keys.mjs"
+    "push:keys": "node scripts/generate-push-keys.mjs",
+    "test:mobile": "node tests/e2e/mobile-audit.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

@@ -5,6 +5,7 @@
 
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -135,6 +136,8 @@
 }
 
 .back-link {
+  min-height: 44px;
+  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
