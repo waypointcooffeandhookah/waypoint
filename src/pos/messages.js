@@ -42,6 +42,13 @@ const STATUS_ERRORS = {
   forbidden: 'Bu işlem için yetkiniz yok.',
   courier_required: 'Önce kurye adını girin.',
   reason_required: 'İptal nedeni gerekli.',
+  overpayment: 'Tutar kalan bakiyeden fazla. Kalanı kontrol edin.',
+  invalid_amount: 'Geçerli bir tutar girin.',
+  invalid_method: 'Ödeme yöntemi geçersiz.',
+  orders_in_progress: 'Servis edilmemiş sipariş var. Önce servis edin veya iptal ettirin.',
+  balance_due: 'Kalan bakiye ödenmeden hesap kapatılamaz.',
+  session_closed: 'Bu masa zaten kapatılmış.',
+  session_not_found: 'Masa oturumu bulunamadı. Liste yenilendi.',
 }
 
 export const statusErrorMessage = code => STATUS_ERRORS[code] ?? 'Durum güncellenemedi. Bağlantınızı kontrol edip tekrar deneyin.'

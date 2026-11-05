@@ -536,3 +536,29 @@
 @media (prefers-reduced-motion: reduce) {
   .wt-table-card.has-ready, .wt-notify-banner, .wt-notify-panel { animation: none; }
 }
+
+/* ─── Adisyon: ödeme al ve hesabı kapat ─── */
+.wt-pay, .wt-payments, .wt-close { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.09); }
+.wt-pay h3, .wt-payments h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1rem; color: #f8f6f2; }
+.wt-pay-quick { display: flex; flex-wrap: wrap; gap: 8px; }
+.wt-pay-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; color: var(--text-secondary); }
+.wt-pay-field .input { width: 100%; min-height: 48px; font-size: 1.1rem; font-weight: 700; }
+.wt-pay-error { margin: 0; font-size: 0.8rem; color: #ff9f8a; }
+.wt-pay-hint { margin: 0; font-size: 0.76rem; }
+.wt-pay-change { margin: 0; font-size: 0.9rem; color: var(--cream-gold); }
+.wt-pay-change strong { color: #f8f6f2; font-size: 1.05rem; }
+.wt-pay-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wt-pay-actions .pos-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; font-size: 0.95rem; font-weight: 800; border-radius: 14px; }
+.wt-pay-cash { color: #0c1f12; background: #7fd8a0; border: 1px solid #7fd8a0; }
+.wt-pay-card { color: #0b1a24; background: #8cc8f0; border: 1px solid #8cc8f0; }
+.wt-pay-actions .pos-btn:disabled { opacity: 0.45; }
+.wt-payments ul { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.wt-payments li { display: flex; align-items: center; gap: 10px; font-size: 0.84rem; color: var(--text-secondary); }
+.wt-payments li strong { margin-left: auto; color: #f8f6f2; }
+.wt-method { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 700; }
+.wt-method-cash { color: #7fd8a0; background: rgba(127, 216, 160, 0.12); }
+.wt-method-card { color: #8cc8f0; background: rgba(140, 200, 240, 0.12); }
+.wt-payments-total { margin: 0; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.8rem; color: var(--cream-gold); }
+.wt-close-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; width: 100%; font-weight: 800; }
+.wt-close-hint { margin: 0; font-size: 0.78rem; text-align: center; }
+.wt-bill { display: flex; flex-direction: column; gap: 12px; }

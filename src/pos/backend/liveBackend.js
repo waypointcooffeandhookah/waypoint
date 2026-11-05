@@ -1,6 +1,6 @@
 // Canlı veri kaynağı: Milestone 1 migration'ı uygulanmış Supabase.
 import { submitOrder, reconcileOrder } from '../orderSubmission.js'
-import { assignOrderCourier, recordFulfillmentPayment, staffOrderTransport, updateFulfillmentStatus, updateOrderStatus } from '../posApi.js'
+import { assignOrderCourier, closeTableSession, recordFulfillmentPayment, recordPayment, staffOrderTransport, updateFulfillmentStatus, updateOrderStatus } from '../posApi.js'
 import { FULFILLMENT_LIMIT, FULFILLMENT_SELECT, FULFILLMENT_WINDOW_MS, mapFulfillmentRow } from '../fulfillment/fulfillmentOrders.js'
 import { statusResult } from '../orderStatus.js'
 import { mapKitchenOrder, SERVED_WINDOW_MS } from '../kitchen/kitchenOrders.js'
@@ -48,7 +48,7 @@ export function createLiveBackend(supabase) {
       const snapshot = await readBillSnapshot(
         async () => {
           const { data, error } = await supabase.from('bill_summaries')
-            .select('bill_id, subtotal_cents, total_cents, paid_cents, balance_cents, order_count')
+            .select('bill_id, session_id, subtotal_cents, total_cents, paid_cents, balance_cents, order_count')
             .eq('table_id', tableId).eq('status', 'open').maybeSingle()
           if (error) throw error
           return data
@@ -62,11 +62,19 @@ export function createLiveBackend(supabase) {
         })
       if (!snapshot) return null
       const { summary: bill, orders } = snapshot
+      const payments = await supabase.from('payments').select('id, amount_cents, method, created_at').eq('bill_id', bill.bill_id).order('created_at')
+      if (payments.error) throw payments.error
       return {
-        billId: bill.bill_id, totalCents: Number(bill.total_cents), paidCents: Number(bill.paid_cents),
+        billId: bill.bill_id, sessionId: bill.session_id, totalCents: Number(bill.total_cents), paidCents: Number(bill.paid_cents),
         balanceCents: Number(bill.balance_cents), orderCount: bill.order_count, orders: orders.map(mapOrder),
+        payments: payments.data.map(row => ({ id: row.id, amountCents: Number(row.amount_cents), method: row.method, createdAt: Date.parse(row.created_at) })),
       }
     },
+
+    // Masa ödemesi (record_payment): aynı anahtarla tekrar çift kayıt üretmez; fazla ödemeyi sunucu reddeder.
+    recordBillPayment: async (billId, amountCents, method, key) => statusResult(await recordPayment(billId, amountCents, method, key)),
+    // Adisyonu kapatır: servis edilmemiş sipariş veya kalan bakiye varsa sunucu reddeder (zorla kapatma yalnızca yönetimde).
+    closeBill: async sessionId => statusResult(await closeTableSession(sessionId)),
 
     submit: submission => submitOrder(submission, staffOrderTransport),
     reconcile: submission => reconcileOrder(submission, staffOrderTransport),

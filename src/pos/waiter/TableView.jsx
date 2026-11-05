@@ -6,6 +6,8 @@ import { createSubmission, savePending, clearPending } from '../orderSubmission'
 import { cartCount, emptyCart, toOrderPayloadLines } from '../cart'
 import { formatCents, estimateTotalCents } from '../money'
 import { statusErrorMessage } from '../messages'
+import { randomUUID } from '../../utils/uuid'
+import { METHOD_LABELS } from './billPayment'
 import { useOrderSync } from '../useOrderSync'
 import CatalogPanel from './CatalogPanel'
 import CartPanel from './CartPanel'
@@ -52,6 +54,42 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
     if (result.state !== 'confirmed') toast.error(statusErrorMessage(result.code))
     loadBill()
   }, [backend, loadBill])
+
+  // Ödeme: bağlantı koparsa aynı tutar/yöntemle tekrar denemede aynı anahtar kullanılır (sunucuda çift kayıt olmaz).
+  const [paying, setPaying] = useState(null)
+  const [closing, setClosing] = useState(false)
+  const pendingPayment = useRef(null)
+  const pay = useCallback(async (amountCents, method, done) => {
+    if (!bill || paying) return
+    if (!window.confirm(`${formatCents(amountCents)} ${METHOD_LABELS[method].toLowerCase()} olarak alındı mı?`)) return
+    const previous = pendingPayment.current
+    const key = previous && previous.billId === bill.billId && previous.amountCents === amountCents && previous.method === method ? previous.key : randomUUID()
+    pendingPayment.current = { billId: bill.billId, amountCents, method, key }
+    setPaying(method)
+    const result = await backend.recordBillPayment(bill.billId, amountCents, method, key)
+    setPaying(null)
+    if (result.state === 'error') { toast.error('Bağlantı sorunu: ödeme doğrulanamadı. Aynı tutarla tekrar deneyin; çift kayıt oluşmaz.'); return }
+    pendingPayment.current = null
+    if (result.state === 'confirmed') { toast.success(`${formatCents(amountCents)} ${METHOD_LABELS[method].toLowerCase()} alındı`); done?.() }
+    else toast.error(statusErrorMessage(result.code))
+    loadBill()
+  }, [backend, bill, paying, loadBill])
+
+  const closeBill = useCallback(async () => {
+    if (!bill?.sessionId || closing) return
+    if (!window.confirm(`${table?.label ?? 'Masa'} hesabı kapatılsın mı? Masa boşalır; yeni sipariş yeni adisyon açar.`)) return
+    setClosing(true)
+    const result = await backend.closeBill(bill.sessionId)
+    setClosing(false)
+    if (result.state === 'confirmed') {
+      toast.success(`${table?.label ?? 'Masa'} kapatıldı`)
+      setSheetOpen(false)
+      navigate('..')
+      return
+    }
+    toast.error(result.state === 'error' ? 'Bağlantı sorunu: hesap kapatılamadı, tekrar deneyin.' : statusErrorMessage(result.code))
+    loadBill()
+  }, [backend, bill, closing, table, navigate, loadBill])
 
   const handleResult = useCallback((sub, result) => {
     if (result.state === 'confirmed') {
@@ -153,7 +191,8 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
             {panel === 'cart'
               ? <CartPanel cart={cart} dispatch={dispatch} submitState={submitState} rejectCode={rejectCode}
                   demo={backend.mode === 'demo'} onSubmit={submit} onReconcile={reconcile} />
-              : <BillPanel bill={bill} error={billError} onServe={markServed} />}
+              : <BillPanel bill={bill} error={billError} onServe={markServed}
+                  onPay={backend.recordBillPayment ? pay : null} onClose={backend.closeBill ? closeBill : null} paying={paying} closing={closing} />}
           </div>
         </aside>
       </div>

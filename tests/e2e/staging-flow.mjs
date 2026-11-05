@@ -504,6 +504,53 @@ try {
     })
   }
 
+  if (creds) await step('Adisyon: garson parçalı ödeme alır (yarısı nakit, kalanı kart) ve hesabı kapatır; masa boşalır', async () => {
+    const admin = await stagingAdmin()
+    try {
+      // Bekleyen siparişler normal yoldan sonuçlandırılır (hazır → servis, diğerleri gerekçeli iptal); ödeme UI'dan alınır.
+      const { data: table } = await admin.from('restaurant_tables').select('id').eq('label', 'Masa 5').single()
+      const { data: open } = await admin.from('bill_summaries').select('bill_id, balance_cents').eq('table_id', table.id).eq('status', 'open').maybeSingle()
+      expect(open, 'Masa 5 açık adisyon yok')
+      const { data: pending } = await admin.from('orders').select('id, status').eq('bill_id', open.bill_id).in('status', ['new', 'preparing', 'ready'])
+      for (const order of pending ?? []) {
+        await admin.rpc('update_order_status', { p_order_id: order.id, p_status: order.status === 'ready' ? 'served' : 'cancelled', p_reason: order.status === 'ready' ? null : 'e2e adisyon testi' })
+      }
+      const { data: before } = await admin.from('bill_summaries').select('balance_cents').eq('bill_id', open.bill_id).single()
+      const balance = Number(before.balance_cents)
+      expect(balance > 0, 'ödenecek bakiye yok')
+
+      const page = (await openPage())
+      await page.size(390, 844)
+      await page.go('/garson')
+      await page.until(`document.querySelector('input[type=password]')`, 'giriş formu')
+      await page.type('#staff-email', creds.waiter.email); await page.type('#staff-password', creds.waiter.password)
+      await page.ev(`document.querySelector('#staff-password').form.requestSubmit()`)
+      await page.until(`document.querySelector('[data-table], .wt-table')`, 'masalar')
+      await page.go(`/garson/masa/${table.id}`)
+      await page.until(`document.querySelector('.wt-bill-btn')`, 'masa ekranı')
+      await page.ev(`window.confirm = () => true`)
+      await page.click('.wt-bill-btn')
+      await page.until(`document.querySelector('.wt-pay .input')`, 'ödeme kutusu')
+      await page.clickText('2 kişi', '.wt-pay button')
+      await page.click('.wt-pay-cash')
+      await page.until(`document.querySelectorAll('.wt-payments li').length===1`, 'nakit ödeme listede')
+      await page.until(`document.querySelector('.wt-pay .input')`, 'kalan için ödeme kutusu')
+      await page.clickText('Kalanın tamamı', '.wt-pay button')
+      await page.click('.wt-pay-card')
+      await page.until(`document.querySelectorAll('.wt-payments li').length===2&&!document.querySelector('.wt-pay')`, 'kart ödemesi, bakiye sıfır')
+      await page.until(`!document.querySelector('.wt-close-btn').disabled`, 'kapat düğmesi açık')
+      await page.click('.wt-close-btn')
+      await page.until(`!location.pathname.includes('/masa/')`, 'masalara dönüldü')
+      const { data: payments } = await admin.from('payments').select('amount_cents, method').eq('bill_id', open.bill_id)
+      const cash = payments.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount_cents), 0)
+      const card = payments.filter(p => p.method === 'card').reduce((s, p) => s + Number(p.amount_cents), 0)
+      expect(cash === Math.ceil(balance / 2) && cash + card === balance, `ödemeler nakit ${cash} kart ${card} bakiye ${balance}`)
+      const { data: closed } = await admin.from('bills').select('status').eq('id', open.bill_id).single()
+      expect(closed.status === 'closed', `adisyon durumu ${closed.status}`)
+      return `nakit ${cash / 100} ₺ + kart ${card / 100} ₺ = ${balance / 100} ₺, adisyon kapalı`
+    } finally { await admin.auth.signOut() }
+  })
+
   await step('Yalıtım: uygulama yalnızca staging projesine bağlandı', async () => {
     const supabaseHosts = [...hosts].filter(host => host.includes('supabase'))
     expect(!supabaseHosts.some(host => host.includes(PRODUCTION_REF)), `üretime istek: ${supabaseHosts}`)

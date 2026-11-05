@@ -24,7 +24,7 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
       id: `demo-siparis-${++state.orderNumber}`, orderNumber: state.orderNumber, idempotencyKey: key, key, source, status: 'new', createdAt, updatedAt: createdAt,
       note: note || null, items, subtotalCents: items.reduce((sum, item) => sum + item.lineTotalCents, 0), demo: true,
     }
-    state.bills[tableId] ??= { billId: `demo-adisyon-${tableId}`, openedAt: createdAt, orders: [], paidCents: 0 }
+    state.bills[tableId] ??= { billId: `demo-adisyon-${tableId}`, openedAt: createdAt, orders: [], paidCents: 0, payments: [] }
     state.bills[tableId].orders.push(order)
     return order
   }
@@ -106,7 +106,36 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
       await wait(latencyMs / 3)
       const bill = (await load()).bills[tableId]
       if (!bill) return null
-      return { billId: bill.billId, openedAt: bill.openedAt, ...summarize(bill), orders: bill.orders }
+      return { billId: bill.billId, sessionId: bill.billId, openedAt: bill.openedAt, ...summarize(bill), orders: bill.orders, payments: bill.payments ?? [] }
+    },
+
+    async recordBillPayment(billId, amountCents, method, key) {
+      await wait(latencyMs / 2)
+      return transact(state => {
+        const bill = Object.values(state.bills).find(item => item.billId === billId)
+        if (!bill) return { state: 'rejected', code: 'bill_closed' }
+        bill.payments ??= []
+        if (bill.payments.some(payment => payment.key === key)) return { state: 'confirmed' }
+        if (!['cash', 'card'].includes(method)) return { state: 'rejected', code: 'invalid_method' }
+        if (!(amountCents > 0)) return { state: 'rejected', code: 'invalid_amount' }
+        if (amountCents > summarize(bill).balanceCents) return { state: 'rejected', code: 'overpayment' }
+        bill.payments.push({ id: `demo-odeme-${bill.payments.length + 1}`, key, amountCents, method, createdAt: now() })
+        bill.paidCents += amountCents
+        return { state: 'confirmed' }
+      })
+    },
+
+    async closeBill(sessionId) {
+      await wait(latencyMs / 2)
+      return transact(state => {
+        const entry = Object.entries(state.bills).find(([, bill]) => bill.billId === sessionId)
+        if (!entry) return { state: 'rejected', code: 'session_closed' }
+        const [tableId, bill] = entry
+        if (bill.orders.some(order => ['new', 'preparing', 'ready'].includes(order.status))) return { state: 'rejected', code: 'orders_in_progress' }
+        if (summarize(bill).balanceCents > 0) return { state: 'rejected', code: 'balance_due' }
+        delete state.bills[tableId]
+        return { state: 'confirmed' }
+      })
     },
 
     async listKitchenOrders() {
