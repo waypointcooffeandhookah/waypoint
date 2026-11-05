@@ -4,6 +4,15 @@ Mutfak bir masa siparişini "hazır" yapınca garsonun telefonuna, uygulama kapa
 Gönderimi Supabase yapar (veritabanı tetikleyicisi → `push_outbox` → `push-dispatch` Edge Function → tarayıcı push
 servisi); Netlify'ın bu kurulumda rolü yoktur. Hepsi Supabase Free + Netlify Free içinde kalır.
 
+## Durum (5 Kasım 2026): staging'de kurulu
+
+- Migration `pos_web_push` uygulandı; `push-dispatch` Edge Function yayında (JWT doğrulaması kapalı, gizli başlıkla korunur).
+- Sırlar tanımlı: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `PUSH_DISPATCH_SECRET`, `VAPID_SUBJECT` (= site adresi; e-postayla değiştirilebilir).
+- `pg_net`, `pg_cron`, iki Vault sırrı; görevler: `waypoint-push-dispatch-sweep` (her dakika, iş yoksa istek atmaz) ve
+  `waypoint-cron-log-cleanup` (Pazartesi 03:30 UTC, yalnızca 7 günden eski cron günlüğünü siler).
+- Doğrulandı: başlıksız/yanlış sırla 403, doğru sırla 200; veritabanından pg_net çağrısı 200; canlı paketteki genel anahtar eşleşiyor.
+- Kalan: cihaz testleri (aşağıda).
+
 ## Parçalar
 
 | Parça | Nerede | Durum nasıl görülür |
