@@ -1,4 +1,4 @@
-// YALNIZCA STAGING: .staging-credentials.local içindeki garson ve mutfak şifrelerini Supabase hesaplarına yazar.
+// YALNIZCA STAGING: .staging-credentials.local içindeki personel şifrelerini Supabase hesaplarına yazar (varsayılan: garson, mutfak; ör. 'admin' verilebilir).
 // Kullanım (terminalde, token ortamda tanımlıyken):  node scripts/staging-sync-passwords.mjs
 // Şifreler ekrana yazılmaz. service_role anahtarı Management API'den bellekte alınır, hiçbir yere kaydedilmez.
 import { readFileSync } from 'node:fs'
@@ -18,7 +18,8 @@ const { data: list, error: listError } = await admin.auth.admin.listUsers()
 console.log(`Supabase'de ${list?.users?.length ?? 0} hesap görüldü`)
 if (listError) throw listError
 
-for (const role of ['waiter', 'kitchen']) {
+const roles = process.argv.slice(2).length ? process.argv.slice(2) : ['waiter', 'kitchen']
+for (const role of roles) {
   const user = list.users.find(item => item.email === creds[role]?.email)
   if (!user) { console.log(`${role}: hesap bulunamadı`); continue }
   const { error } = await admin.auth.admin.updateUserById(user.id, { password: creds[role].password })
