@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../supabaseClient'
-import { STAFF_ROLES, posErrorMessage } from './adminData'
+import { STAFF_ROLES, callStaffAccount, posErrorMessage, staffAccountMessage } from './adminData'
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const EMPTY = { name: '', email: '', password: '', role: 'waiter' }
 
-// Şifre ve hesap oluşturma tarayıcıdan yapılmaz (service_role gerektirir); burada rol ve erişim yönetilir.
+// Hesap açma ve şifre değiştirme sunucudaki staff-account fonksiyonuyla yapılır (gizli anahtar tarayıcıya gelmez);
+// rol ve erişim upsert_staff_profile ile yönetilir.
 export default function StaffSection() {
   const [staff, setStaff] = useState(null)
   const [me, setMe] = useState(null)
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [draft, setDraft] = useState({ id: '', name: '', role: 'waiter' })
+  const [draft, setDraft] = useState(EMPTY)
+  const [passwordFor, setPasswordFor] = useState(null) // { userId, value }
 
   const load = useCallback(async () => {
     const [{ data, error: failure }, session] = await Promise.all([
@@ -37,9 +39,31 @@ export default function StaffSection() {
 
   async function add(event) {
     event.preventDefault()
-    if (!UUID.test(draft.id.trim())) return toast.error('Geçerli bir kullanıcı kimliği girin.')
-    if (!draft.name.trim()) return toast.error('Ad girin.')
-    if (await upsert({ user_id: draft.id.trim(), display_name: draft.name.trim(), role: draft.role, is_active: true }, {}, 'Personel eklendi.')) setDraft({ id: '', name: '', role: 'waiter' })
+    if (busy) return
+    const name = draft.name.trim(), email = draft.email.trim()
+    if (!name) return toast.error('Ad girin.')
+    if (draft.password.length < 8) return toast.error(staffAccountMessage('weak_password'))
+    setBusy(true)
+    const result = await callStaffAccount(supabase, { action: 'create', email, displayName: name, role: draft.role, password: draft.password })
+    setBusy(false)
+    if (!result.ok) return toast.error(staffAccountMessage(result.code))
+    toast.success(result.data?.linked
+      ? `${name} eklendi. Bu e-posta zaten kayıtlıydı; eski şifresi geçerli.`
+      : `${name} eklendi. ${email} ve verdiğiniz şifreyle giriş yapabilir.`, { duration: 6000 })
+    setDraft(EMPTY)
+    load()
+  }
+
+  async function savePassword(event) {
+    event.preventDefault()
+    if (busy || !passwordFor) return
+    if (passwordFor.value.length < 8) return toast.error(staffAccountMessage('weak_password'))
+    setBusy(true)
+    const result = await callStaffAccount(supabase, { action: 'set_password', userId: passwordFor.userId, password: passwordFor.value })
+    setBusy(false)
+    if (!result.ok) return toast.error(staffAccountMessage(result.code))
+    toast.success('Şifre değiştirildi. Yeni şifre bir sonraki girişte geçerli.')
+    setPasswordFor(null)
   }
 
   return (
@@ -50,6 +74,7 @@ export default function StaffSection() {
       <ul className="ad-staff">
         {staff?.map(person => {
           const self = person.user_id === me
+          const editing = passwordFor?.userId === person.user_id
           return (
             <li key={person.user_id} className={`ad-person${person.is_active ? '' : ' inactive'}`} data-person={person.display_name}>
               <div className="ad-order-head">
@@ -62,23 +87,37 @@ export default function StaffSection() {
                   {Object.entries(STAFF_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                 </select>
                 <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy || self} onClick={() => upsert(person, { is_active: !person.is_active }, person.is_active ? 'Erişim kapatıldı.' : 'Erişim açıldı.')}>{person.is_active ? 'Erişimi kapat' : 'Erişimi aç'}</button>
+                <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy} aria-expanded={editing}
+                  onClick={() => setPasswordFor(editing ? null : { userId: person.user_id, value: '' })}>Şifre değiştir</button>
               </div>
+              {editing && (
+                <form className="ad-row-actions" onSubmit={savePassword}>
+                  <input className="input" type="text" autoComplete="new-password" autoCapitalize="none" minLength={8} maxLength={72} autoFocus
+                    placeholder="Yeni şifre (en az 8 karakter)" aria-label={`${person.display_name} yeni şifre`}
+                    value={passwordFor.value} onChange={event => setPasswordFor({ ...passwordFor, value: event.target.value })} />
+                  <button type="submit" className="pos-btn pos-btn-primary" disabled={busy}>Kaydet</button>
+                </form>
+              )}
             </li>
           )
         })}
       </ul>
       <section className="ad-card">
         <div className="ad-card-head"><h2>Personel ekle</h2></div>
-        <p className="pos-muted">Önce hesabı Supabase panelinde (Authentication → Users) oluşturun, kullanıcı kimliğini buraya girin. Şifreler bu ekrandan yönetilmez. Rol değişikliği oturum açık cihazlarda hemen geçerli olur; bu panele giriş ayrıca hesapta yönetici yetkisi gerektirir.</p>
+        <p className="pos-muted">Hesap burada açılır; kişi bu e-posta ve şifreyle garson/mutfak ekranına girer. Şifreyi kişiye kendiniz iletin; gerekirse "Şifre değiştir" ile yenileyin. Yönetici rolü bu panele de giriş verir.</p>
         <form className="ad-zone-form" onSubmit={add}>
-          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-id">Kullanıcı kimliği</label><input id="ad-staff-id" className="input" value={draft.id} onChange={event => setDraft({ ...draft, id: event.target.value })} /></div>
-          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-name">Ad</label><input id="ad-staff-name" className="input" maxLength={60} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} /></div>
+          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-name">Ad</label>
+            <input id="ad-staff-name" className="input" maxLength={60} autoComplete="off" placeholder="Örn. Ayşe" value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} /></div>
+          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-email">E-posta</label>
+            <input id="ad-staff-email" className="input" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" placeholder="ayse@ornek.com" required value={draft.email} onChange={event => setDraft({ ...draft, email: event.target.value })} /></div>
+          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-password">Şifre</label>
+            <input id="ad-staff-password" className="input" type="text" autoComplete="new-password" autoCapitalize="none" minLength={8} maxLength={72} placeholder="En az 8 karakter" required value={draft.password} onChange={event => setDraft({ ...draft, password: event.target.value })} /></div>
           <div className="ad-field"><label className="input-label" htmlFor="ad-staff-role">Rol</label>
             <select id="ad-staff-role" className="input" value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })}>
               {Object.entries(STAFF_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </div>
-          <button type="submit" className="pos-btn pos-btn-primary" disabled={busy}>Ekle</button>
+          <button type="submit" className="pos-btn pos-btn-primary" disabled={busy}>{busy ? 'Hesap açılıyor…' : 'Hesap aç ve ekle'}</button>
         </form>
       </section>
     </main>

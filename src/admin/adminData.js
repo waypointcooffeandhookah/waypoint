@@ -95,3 +95,30 @@ export function moveTable(tables, id, direction) {
 }
 
 export const cleanTableLabel = text => String(text ?? '').replace(/\s+/g, ' ').trim()
+
+// Personel hesabı (staff-account Edge Function) hata kodları.
+const STAFF_ACCOUNT_MESSAGES = {
+  invalid_email: 'Geçerli bir e-posta adresi girin.',
+  invalid_name: 'Ad 1–60 karakter olmalı.',
+  invalid_role: 'Bir rol seçin.',
+  weak_password: 'Şifre en az 8 karakter olmalı.',
+  already_staff: 'Bu e-posta zaten personel listesinde.',
+  email_exists: 'Bu e-posta ile kayıtlı bir hesap var ama bulunamadı; tekrar deneyin.',
+  forbidden: 'Bu işlem için yönetici yetkisi gerekli.',
+  unauthorized: 'Oturumunuz kapanmış; yeniden giriş yapın.',
+  not_staff: 'Bu kişi personel listesinde değil.',
+  unreachable: 'Hesap servisine ulaşılamadı. Bağlantınızı kontrol edin.',
+}
+export const staffAccountMessage = code => STAFF_ACCOUNT_MESSAGES[code] ?? 'Hesap işlemi tamamlanamadı, tekrar deneyin.'
+
+// Döner: { ok: true, data } veya { ok: false, code }
+export async function callStaffAccount(supabase, body) {
+  try {
+    const { data, error } = await supabase.functions.invoke('staff-account', { body })
+    if (!error) return { ok: true, data }
+    const payload = await Promise.resolve(error.context?.json?.()).catch(() => null)
+    return { ok: false, code: payload?.error ?? (error.context?.status ? 'failed' : 'unreachable') }
+  } catch {
+    return { ok: false, code: 'unreachable' }
+  }
+}
