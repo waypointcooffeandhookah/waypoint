@@ -8,6 +8,8 @@ import './AdminPage.css'
 import { PromotionSettings } from './Promotion'
 import ImageUpload from './ImageUpload'
 import SocialSettings from './SocialSettings'
+import SortableList from '../admin/SortableList'
+import { bySortOrder, groupItemsByCategory, moveItem, renumber, reorderErrorMessage } from '../admin/menuOrder'
 
 /* ================================================================
    ADMIN PAGE — Waypoint QR Menu
@@ -30,7 +32,7 @@ export default function AdminPage({ embedded = false }) {
     setLoading(true)
     const [{ data: cats }, { data: its }] = await Promise.all([
       supabase.from('categories').select('*').order('sort_order'),
-      supabase.from('menu_items').select('*, categories(name)').order('created_at'),
+      supabase.from('menu_items').select('*, categories(name)').order('sort_order').order('created_at'),
     ])
     const mappedItems = (its || []).map(it => ({
       ...it,
@@ -43,6 +45,20 @@ export default function AdminPage({ embedded = false }) {
   }
 
   useEffect(() => { reload() }, [])
+
+  // Sıralama: ekranda hemen değişir, sunucuya tek işlemde yazılır; hata olursa güncel sıra yeniden yüklenir.
+  const [ordering, setOrdering] = useState(false)
+  const saveOrder = async (kind, list, from, to) => {
+    if (ordering) return
+    const next = renumber(moveItem(list, from, to))
+    const changed = new Map(next.map(entry => [entry.id, entry]))
+    const apply = setter => setter(prev => prev.map(entry => changed.get(entry.id) ?? entry).sort(bySortOrder))
+    apply(kind === 'categories' ? setCategories : setItems)
+    setOrdering(true)
+    const { error } = await supabase.rpc('reorder_menu', { p_kind: kind, p_ids: next.map(entry => entry.id) })
+    setOrdering(false)
+    if (error) { toast.error(reorderErrorMessage(error)); reload() }
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -121,6 +137,8 @@ export default function AdminPage({ embedded = false }) {
           <ItemsSection
             items={items}
             categories={categories}
+            ordering={ordering}
+            onReorder={(list, from, to) => saveOrder('items', list, from, to)}
             onAdd={() => setItemModal({})}
             onEdit={item => setItemModal(item)}
             onDelete={async item => {
@@ -141,6 +159,8 @@ export default function AdminPage({ embedded = false }) {
         ) : (
           <CategoriesSection
             categories={categories}
+            ordering={ordering}
+            onReorder={(from, to) => saveOrder('categories', categories, from, to)}
             onAdd={() => setCatModal({})}
             onEdit={cat => setCatModal(cat)}
             onDelete={async cat => {
@@ -169,13 +189,14 @@ export default function AdminPage({ embedded = false }) {
 /* ================================================================
    ITEMS SECTION
    ================================================================ */
-function ItemsSection({ items, categories, onAdd, onEdit, onDelete, onToggle }) {
+function ItemsSection({ items, categories, ordering, onReorder, onAdd, onEdit, onDelete, onToggle }) {
   const [query, setQuery] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const normalizedQuery = query.trim().toLocaleLowerCase('tr-TR')
   const visibleItems = items.filter(item => (!categoryId || item.category_id === categoryId) &&
     (!normalizedQuery || `${item.name} ${item.description || ''}`.toLocaleLowerCase('tr-TR').includes(normalizedQuery)))
   const clearFilters = () => { setQuery(''); setCategoryId('') }
+  const groups = groupItemsByCategory(items, categories).filter(group => !categoryId || group.id === categoryId)
   return (
     <>
       <div className="section-header fade-up-3">
@@ -209,59 +230,77 @@ function ItemsSection({ items, categories, onAdd, onEdit, onDelete, onToggle }) 
       ) : visibleItems.length === 0 ? (
         <div className="empty-state" role="status"><h3>Ürün bulunamadı</h3><p>Başka bir kelime veya kategori deneyin.</p><button type="button" className="btn btn-ghost btn-sm" onClick={clearFilters}>Filtreleri temizle</button></div>
       ) : (
-        <div className="data-list">
-          {visibleItems.map(item => (
-            <div className="data-row fade-in" key={item.id}>
-              <div className="data-row-img">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} />
-                ) : (
-                  <UtensilsCrossed size={16} strokeWidth={1.5} color="var(--text-muted)" />
-                )}
-              </div>
-              <div className="data-row-info">
-                <div className="data-row-name">{item.name}</div>
-                <div className="data-row-meta">
-                  {item.categories?.name}
-                  {' · '}
-                  <span className={`badge ${item.is_available !== false ? 'badge-available' : 'badge-unavailable'}`}
-                    style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                    {item.is_available !== false ? 'Mevcut' : 'Tükendi'}
-                  </span>
-                </div>
-              </div>
-              <div className="data-row-price">
-                {item.price != null && item.price > 0
-                  ? Number(item.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
-                  : '—'}
-              </div>
-              <div className="data-row-actions">
-                <button
-                  className="btn btn-ghost btn-icon btn-sm"
-                  title={item.is_available !== false ? 'Tükendi işaretle' : 'Mevcut işaretle'}
-                  onClick={() => onToggle(item)}
-                >
-                  {item.is_available !== false ? <Check size={13} color="#4ade80" /> : <X size={13} color="#f87171" />}
-                </button>
-                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => onEdit(item)}>
-                  <Pencil size={13} />
-                </button>
-                <button className="btn btn-danger btn-icon btn-sm" onClick={() => onDelete(item)}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
+        <>
+          {normalizedQuery && <p className="admin-sort-hint">Sıralamak için aramayı temizleyin.</p>}
+          {normalizedQuery ? (
+            <div className="data-list">
+              {visibleItems.map(item => <ItemRow key={item.id} item={item} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />)}
             </div>
+          ) : groups.map(group => (
+            <section className="admin-sort-group" key={group.id ?? 'none'} aria-label={group.name}>
+              <h3 className="admin-sort-group-title">{group.name} <span>{group.items.length}</span></h3>
+              <SortableList items={group.items} getKey={item => item.id} getLabel={item => item.name} disabled={ordering}
+                onMove={(from, to) => onReorder(group.items, from, to)}
+                renderItem={(item, sort) => <ItemRow item={item} sort={sort} onToggle={onToggle} onEdit={onEdit} onDelete={onDelete} />} />
+            </section>
           ))}
-        </div>
+        </>
       )}
     </>
+  )
+}
+
+function ItemRow({ item, sort, onToggle, onEdit, onDelete }) {
+  return (
+    <div className="data-row fade-in">
+      {sort?.grip}
+      <div className="data-row-img">
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.name} />
+        ) : (
+          <UtensilsCrossed size={16} strokeWidth={1.5} color="var(--text-muted)" />
+        )}
+      </div>
+      <div className="data-row-info">
+        <div className="data-row-name">{item.name}</div>
+        <div className="data-row-meta">
+          {item.categories?.name}
+          {' · '}
+          <span className={`badge ${item.is_available !== false ? 'badge-available' : 'badge-unavailable'}`}
+            style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
+            {item.is_available !== false ? 'Mevcut' : 'Tükendi'}
+          </span>
+        </div>
+      </div>
+      <div className="data-row-price">
+        {item.price != null && item.price > 0
+          ? Number(item.price).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
+          : '—'}
+      </div>
+      <div className="data-row-actions">
+        {sort?.arrows}
+        <button
+          className="btn btn-ghost btn-icon btn-sm"
+          title={item.is_available !== false ? 'Tükendi işaretle' : 'Mevcut işaretle'}
+          onClick={() => onToggle(item)}
+        >
+          {item.is_available !== false ? <Check size={13} color="#4ade80" /> : <X size={13} color="#f87171" />}
+        </button>
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => onEdit(item)}>
+          <Pencil size={13} />
+        </button>
+        <button className="btn btn-danger btn-icon btn-sm" onClick={() => onDelete(item)}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
   )
 }
 
 /* ================================================================
    CATEGORIES SECTION
    ================================================================ */
-function CategoriesSection({ categories, onAdd, onEdit, onDelete }) {
+function CategoriesSection({ categories, ordering, onReorder, onAdd, onEdit, onDelete }) {
   return (
     <>
       <div className="section-header fade-up-3">
@@ -278,9 +317,10 @@ function CategoriesSection({ categories, onAdd, onEdit, onDelete }) {
           <p>Ürün eklemek için önce kategori oluşturun.</p>
         </div>
       ) : (
-        <div className="data-list">
-          {categories.map(cat => (
-            <div className="data-row fade-in" key={cat.id}>
+        <SortableList items={categories} getKey={cat => cat.id} getLabel={cat => cat.name} disabled={ordering} onMove={onReorder}
+          renderItem={(cat, sort) => (
+            <div className="data-row fade-in">
+              {sort.grip}
               <div className="data-row-img">
                 {cat.image_url ? (
                   <img src={cat.image_url} alt={cat.name} />
@@ -293,6 +333,7 @@ function CategoriesSection({ categories, onAdd, onEdit, onDelete }) {
                 <div className="data-row-meta">Sıra: {cat.sort_order ?? 0}</div>
               </div>
               <div className="data-row-actions">
+                {sort.arrows}
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => onEdit(cat)}>
                   <Pencil size={13} />
                 </button>
@@ -301,8 +342,7 @@ function CategoriesSection({ categories, onAdd, onEdit, onDelete }) {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+          )} />
       )}
     </>
   )

@@ -42,7 +42,7 @@ export function filterCatalog(items, { query = '', categoryId = null } = {}) {
 export async function loadCatalog(supabase, imageOf) {
   const [cats, items] = await Promise.all([
     supabase.from('categories').select('id, name, sort_order').order('sort_order'),
-    supabase.from('menu_items').select('id, name, price, image_url, is_available, category_id, created_at').order('created_at'),
+    supabase.from('menu_items').select('id, name, price, image_url, is_available, category_id, created_at').order('sort_order').order('created_at'),
   ])
   if (cats.error) throw cats.error
   if (items.error) throw items.error

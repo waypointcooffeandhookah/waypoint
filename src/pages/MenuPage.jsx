@@ -155,25 +155,17 @@ const GROUP_RULES = [
 ]
 
 // ── Katalog Gruplama Fonksiyonu ──
+// Grup kartı, ilk çeşidinin menüdeki yerinde durur; böylece yönetim panelindeki sıra müşteri menüsüne aynen yansır.
 function groupCatalog(allItems) {
   const matchedItemIds = new Set()
-  const result = []
+  const groupAt = new Map() // ilk çeşidin id'si → grup kartı
 
   for (const rule of GROUP_RULES) {
     const matching = allItems.filter(it => !matchedItemIds.has(it.id) && rule.match(it))
     if (matching.length > 1) {
       matching.forEach(it => matchedItemIds.add(it.id))
 
-      // Sade / Klasik seçeneği en başa alma
-      matching.sort((a, b) => {
-        const aName = trLower(a.name)
-        const bName = trLower(b.name)
-        const aIsBase = aName.startsWith('sade') || aName === 'türk kahvesi' || aName.includes('şişe') || aName.includes('cam')
-        const bIsBase = bName.startsWith('sade') || bName === 'türk kahvesi' || bName.includes('şişe') || bName.includes('cam')
-        if (aIsBase && !bIsBase) return -1
-        if (!aIsBase && bIsBase) return 1
-        return aName.localeCompare(bName, 'tr-TR')
-      })
+      // Çeşitler yönetim panelindeki sırayla gelir (allItems zaten sıralı).
 
       const validPrices = matching
         .map(v => Number(v.price))
@@ -183,7 +175,7 @@ function groupCatalog(allItems) {
       const isAvailable = matching.some(v => v.is_available !== false)
       const firstImage = matching.find(v => /^https?:\/\//.test(v.image_url || ''))?.image_url || rule.coverImage || matching.find(v => Boolean(v.image_url))?.image_url || null
 
-      result.push({
+      groupAt.set(matching[0].id, {
         isGroup: true,
         id: rule.id,
         name: rule.name,
@@ -199,12 +191,11 @@ function groupCatalog(allItems) {
     }
   }
 
+  const result = []
   for (const item of allItems) {
-    if (!matchedItemIds.has(item.id)) {
-      result.push(item)
-    }
+    if (groupAt.has(item.id)) result.push(groupAt.get(item.id))
+    else if (!matchedItemIds.has(item.id)) result.push(item)
   }
-
   return result
 }
 
@@ -311,7 +302,7 @@ export default function MenuPage({ ordering = null, tableChip = null, orderBanne
       try {
         const [catsRes, itsRes] = await Promise.all([
           supabase.from('categories').select('*').order('sort_order').abortSignal(controller.signal),
-          supabase.from('menu_items').select('*, categories(name)').order('created_at').abortSignal(controller.signal),
+          supabase.from('menu_items').select('*, categories(name)').order('sort_order').order('created_at').abortSignal(controller.signal),
         ])
         if (catsRes.error) throw catsRes.error
         if (itsRes.error)  throw itsRes.error
