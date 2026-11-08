@@ -71,3 +71,16 @@ test('rotalar: tek yönetim girişi korumalıdır; POS yoksa mevcut menü yönet
   assert.match(shell, /mode === 'legacy'\) return <AdminPage \/>/)
   assert.match(shell, /<AdminPage embedded \/>/)
 })
+
+test('masa sıralama: komşuyla yer değiştirir, eşit sıra bırakmaz; uçlarda değişiklik yok', async () => {
+  const { moveTable, cleanTableLabel, posErrorMessage } = await import('../../src/admin/adminData.js')
+  // Başlangıç sırası: Masa 0 (0), Bahçe (1), Masa 1 (1) — eşitlikte ada göre.
+  const tables = [{ id: 'a', label: 'Masa 0', sort_order: 0 }, { id: 'b', label: 'Masa 1', sort_order: 1 }, { id: 'c', label: 'Bahçe', sort_order: 1 }]
+  const order = new Map(tables.map(t => [t.id, t.sort_order]))
+  for (const row of moveTable(tables, 'a', 1)) order.set(row.id, row.sort_order)
+  assert.deepEqual(Object.fromEntries(order), { c: 0, a: 1, b: 2 })
+  assert.deepEqual(moveTable(tables, 'a', -1), [], 'en üstteki yukarı gitmez')
+  assert.deepEqual(moveTable(tables, 'x', 1), [], 'bilinmeyen masa')
+  assert.equal(cleanTableLabel('  Bahçe   1 '), 'Bahçe 1')
+  assert.match(posErrorMessage({ code: '23505', message: 'duplicate key' }), /zaten var/)
+})

@@ -133,3 +133,14 @@
 .ad-page .ff-page { width: 100%; margin: 0; padding: 0; }
 
 @media (min-width: 1000px) { .ad-nav { padding-bottom: 44px; } }
+
+/* ─── Masalar: ad verme, sıralama, kullanım dışı ─── */
+.ad-tables-count { margin: 0; font-size: 0.8rem; }
+.ad-rename-btn { width: 40px; height: 40px; min-width: 40px; }
+.ad-order-btns { display: inline-flex; gap: 6px; margin-left: auto; }
+.ad-order-btns .pos-icon-btn { width: 40px; height: 40px; }
+.ad-order-btns .pos-icon-btn:disabled { opacity: 0.3; }
+.ad-rename { display: flex; align-items: center; gap: 8px; }
+.ad-rename .input { flex: 1; min-width: 0; font-size: 16px; }
+.ad-inactive summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-size: 0.86rem; font-weight: 700; color: var(--cream-gold); }
+.ad-inactive[open] summary { margin-bottom: 10px; }

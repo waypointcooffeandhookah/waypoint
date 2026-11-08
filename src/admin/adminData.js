@@ -79,4 +79,19 @@ export const POS_ERRORS = {
   forbidden: 'Bu işlem için yetkiniz yok.', invalid_hours: 'Çalışma saatlerini kontrol edin.', invalid_settings: 'Ayarlar geçersiz.',
   table_not_found: 'Masa bulunamadı.', session_closed: 'Oturum zaten kapalı.',
 }
-export const posErrorMessage = error => POS_ERRORS[/^pos:([a-z_]+)/.exec(error?.message ?? '')?.[1]] ?? 'İşlem tamamlanamadı. Bağlantınızı kontrol edip tekrar deneyin.'
+const DB_ERRORS = { 23505: 'Bu adda bir masa zaten var. Farklı bir ad yazın.', 23514: 'Masa adı 1–40 karakter olmalı.' }
+export const posErrorMessage = error => POS_ERRORS[/^pos:([a-z_]+)/.exec(error?.message ?? '')?.[1]] ?? DB_ERRORS[error?.code] ?? 'İşlem tamamlanamadı. Bağlantınızı kontrol edip tekrar deneyin.'
+
+// Masayı listede bir yukarı/aşağı taşır: aktif masalar 0'dan başlayarak yeniden numaralanır (eşit sıra kalmaz).
+// Yalnızca sırası değişen masalar döner: [{ id, sort_order }].
+export function moveTable(tables, id, direction) {
+  const list = [...tables].sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label, 'tr', { numeric: true }))
+  const index = list.findIndex(table => table.id === id)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= list.length) return []
+  ;[list[index], list[target]] = [list[target], list[index]]
+  return list.map((table, order) => ({ id: table.id, sort_order: order, before: table.sort_order }))
+    .filter(row => row.sort_order !== row.before).map(({ id: rowId, sort_order }) => ({ id: rowId, sort_order }))
+}
+
+export const cleanTableLabel = text => String(text ?? '').replace(/\s+/g, ' ').trim()
