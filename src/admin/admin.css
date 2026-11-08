@@ -144,3 +144,19 @@
 .ad-rename .input { flex: 1; min-width: 0; font-size: 16px; }
 .ad-inactive summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-size: 0.86rem; font-weight: 700; color: var(--cream-gold); }
 .ad-inactive[open] summary { margin-bottom: 10px; }
+
+/* ─── QR: yeni masa bildirimi ve toplu yazdırma ─── */
+.ad-qr-new { margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 0.84rem; font-weight: 700; color: var(--pos-teal); background: var(--pos-teal-soft); }
+.ad-print-all { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+@media screen { .ad-print { display: none; } }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body * { visibility: hidden !important; }
+  .ad-side, .ad-dialog-backdrop, [class*="toast"] { display: none !important; }
+  .ad-print, .ad-print * { visibility: visible !important; }
+  .ad-print { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; background: #fff; }
+  .ad-print-card { break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 4mm; padding: 6mm; border: 1px solid #999; border-radius: 4mm; color: #000; text-align: center; }
+  .ad-print-card img { width: 60mm; height: 60mm; image-rendering: pixelated; }
+  .ad-print-card strong { font: 700 18pt 'Playfair Display', serif; color: #000; }
+  .ad-print-card span { font: 10pt 'Inter', sans-serif; color: #333; }
+}

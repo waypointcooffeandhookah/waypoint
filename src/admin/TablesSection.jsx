@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import qrcode from 'qrcode-generator'
-import { ArrowDown, ArrowUp, Check, Download, Pencil, RefreshCw, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Download, Pencil, Printer, RefreshCw, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../supabaseClient'
 import { useDialog } from '../utils/useDialog'
@@ -9,20 +9,45 @@ import { formatCents } from '../pos/money'
 import { cleanTableLabel, moveTable, posErrorMessage, tableQrUrl } from './adminData'
 import { useAdminSync } from './useAdminSync'
 
-function QrDialog({ table, token, onRotate, onClose }) {
+const qrImage = (url, cell = 8) => {
+  const code = qrcode(0, 'M')
+  code.addData(url)
+  code.make()
+  return code.createDataURL(cell, 16)
+}
+const qrUrlFor = token => tableQrUrl(token, window.location.origin, import.meta.env.BASE_URL)
+
+// Yazdırma sayfası: her masa için ad + QR (A4'te 2 sütun). Yalnızca yazdırırken görünür.
+function PrintSheet({ tables, tokens, onDone }) {
+  useEffect(() => {
+    const done = () => onDone()
+    window.addEventListener('afterprint', done)
+    const timer = setTimeout(() => window.print(), 50)
+    return () => { clearTimeout(timer); window.removeEventListener('afterprint', done) }
+  }, [onDone])
+  return (
+    <div className="ad-print" aria-hidden="true">
+      {tables.filter(table => tokens.has(table.id)).map(table => (
+        <div key={table.id} className="ad-print-card">
+          <img src={qrImage(qrUrlFor(tokens.get(table.id)), 10)} alt="" />
+          <strong>{table.label}</strong>
+          <span>Menü ve sipariş için telefonunuzun kamerasıyla okutun</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function QrDialog({ table, token, onRotate, onClose, isNew = false }) {
   const dialogRef = useDialog(onClose)
-  const url = tableQrUrl(token, window.location.origin, import.meta.env.BASE_URL)
-  const image = useMemo(() => {
-    const code = qrcode(0, 'M')
-    code.addData(url)
-    code.make()
-    return code.createDataURL(8, 16)
-  }, [url])
+  const url = qrUrlFor(token)
+  const image = useMemo(() => qrImage(url), [url])
 
   return (
     <div className="ad-dialog-backdrop" onClick={onClose}>
       <section className="ad-dialog" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${table.label} QR kodu`} onClick={event => event.stopPropagation()}>
         <div className="ad-card-head"><h2>{table.label} QR kodu</h2><button type="button" className="pos-icon-btn" onClick={onClose} aria-label="Kapat"><X size={18} /></button></div>
+        {isNew && <p className="ad-qr-new">✓ {table.label} eklendi; QR kodu otomatik oluşturuldu.</p>}
         <img className="ad-qr" src={image} alt={`${table.label} QR kodu`} />
         <p className="pos-muted">Kod bu masaya özeldir. Yalnızca masaya yerleştirin; paylaşmayın.</p>
         <div className="ad-row-actions">
@@ -42,6 +67,9 @@ export default function TablesSection() {
   const [qrFor, setQrFor] = useState(null)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(null) // { id, value }
+  const [created, setCreated] = useState(null) // yeni eklenen masanın kimliği: QR hemen açılır
+  const [printing, setPrinting] = useState(false)
+  const stopPrinting = useCallback(() => setPrinting(false), [])
 
   const load = useCallback(async () => {
     const [tables, tokens, bills] = await Promise.all([
@@ -54,7 +82,7 @@ export default function TablesSection() {
     setData({ tables: tables.data, tokens: new Map(tokens.data.map(row => [row.table_id, row.token])), bills: new Map(bills.data.map(row => [row.table_id, row])) })
   }, [])
   const { refresh } = useAdminSync(load)
-  const closeQr = useCallback(() => setQrFor(null), [])
+  const closeQr = useCallback(() => { setQrFor(null); setCreated(null) }, [])
 
   async function run(action, success) {
     setBusy(true)
@@ -71,8 +99,14 @@ export default function TablesSection() {
     event.preventDefault()
     const name = cleanTableLabel(label)
     if (!name) return
-    const sort = Math.max(0, ...data.tables.map(table => table.sort_order)) + 1
-    if (await run(() => supabase.from('restaurant_tables').insert({ label: name, sort_order: sort }), `${name} eklendi.`)) setLabel('')
+    const sort = Math.max(0, ...data.tables.filter(table => table.is_active).map(table => table.sort_order)) + 1
+    let row = null
+    const ok = await run(async () => {
+      const result = await supabase.from('restaurant_tables').insert({ label: name, sort_order: sort }).select('id, label, sort_order, is_active').single()
+      row = result.data
+      return result
+    })
+    if (ok && row) { setLabel(''); setCreated(row.id); setQrFor(row) }
   }
 
   const setActive = table => {
@@ -106,7 +140,12 @@ export default function TablesSection() {
 
   return (
     <main className="ad-page fade-in">
-      <div className="ad-page-head"><h1 className="pos-title">Masalar</h1></div>
+      <div className="ad-page-head">
+        <h1 className="pos-title">Masalar</h1>
+        <button type="button" className="pos-btn pos-btn-ghost ad-print-all" disabled={!data || !active.length} onClick={() => setPrinting(true)}>
+          <Printer size={16} aria-hidden="true" /> Tüm QR kodlarını yazdır
+        </button>
+      </div>
       <form className="ad-card ad-inline-form" onSubmit={addTable}>
         <label className="input-label" htmlFor="ad-new-table">Yeni masa</label>
         <div className="ad-row-actions">
@@ -126,7 +165,8 @@ export default function TablesSection() {
           <ul className="ad-tables">{inactive.map(table => renderTable(table))}</ul>
         </details>
       )}
-      {qrFor && data.tokens.has(qrFor.id) && <QrDialog table={qrFor} token={data.tokens.get(qrFor.id)} onRotate={() => rotate(qrFor)} onClose={closeQr} />}
+      {qrFor && data.tokens.has(qrFor.id) && <QrDialog table={qrFor} token={data.tokens.get(qrFor.id)} isNew={created === qrFor.id} onRotate={() => rotate(qrFor)} onClose={closeQr} />}
+      {printing && data && <PrintSheet tables={active} tokens={data.tokens} onDone={stopPrinting} />}
     </main>
   )
 

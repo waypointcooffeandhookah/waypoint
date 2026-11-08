@@ -3,7 +3,8 @@
 //  - iOS'un odaklanınca otomatik yakınlaştırdığı 16px altı yazı kutuları,
 //  - 40px'ten küçük dokunma hedefleri
 // listeler; ekran görüntülerini E2E_SHOTS klasörüne kaydeder.
-// Ortam: E2E_BASE (varsayılan canlı staging), E2E_SHOTS (varsayılan: işletim sistemi geçici klasörü).
+// Ortam: E2E_BASE (varsayılan canlı staging), E2E_SHOTS (varsayılan: işletim sistemi geçici klasörü),
+// E2E_ONLY (ekran adları), E2E_WIDTH/E2E_HEIGHT, E2E_ACTION (ekranda çalıştırılacak JS), E2E_MEDIA (ör. print).
 import { spawn } from 'node:child_process'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -103,6 +104,9 @@ try {
       await b.ev(`document.querySelector('.promotion-close')?.click()`)
     }
     await sleep(1500)
+    // İsteğe bağlı: ekranda bir eylem (E2E_ACTION) ve yazdırma görünümü (E2E_MEDIA=print).
+    if (process.env.E2E_ACTION) { await b.ev(`window.print = () => {}; ${process.env.E2E_ACTION}`); await sleep(800) }
+    if (process.env.E2E_MEDIA) await b.cdp('Emulation.setEmulatedMedia', { media: process.env.E2E_MEDIA })
     const audit = await b.ev(AUDIT)
     const shot = await b.cdp('Page.captureScreenshot', { format: 'jpeg', quality: 70 })
     writeFileSync(join(SHOTS, `${page.name}.jpg`), Buffer.from(shot.result.data, 'base64'))
