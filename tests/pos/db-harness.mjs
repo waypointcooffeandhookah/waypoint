@@ -44,6 +44,7 @@ export async function createDb() {
   await db.exec(read('supabase/migrations/20261105090000_pos_qr_visits.sql'))
   await db.exec(read('supabase/migrations/20261108090000_pos_session_label.sql'))
   await db.exec(read('supabase/migrations/20261109090000_menu_sort_order.sql'))
+  await db.exec(read('supabase/migrations/20261110090000_staff_admin_sync.sql'))
   // Mevcut kurulum betiği menü tablolarını Supabase varsayılan yetkileriyle bıraktığı için
   // testte de okumayı açıyoruz (supabase_security.sql ile aynı).
   await db.exec('grant select on public.categories, public.menu_items to anon, authenticated')

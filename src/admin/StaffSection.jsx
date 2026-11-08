@@ -83,7 +83,8 @@ export default function StaffSection() {
                 {!person.is_active && <span className="ad-channel-tag">Pasif</span>}
               </div>
               <div className="ad-row-actions">
-                <select className="input ad-role" aria-label={`${person.display_name} rolü`} value={person.role} disabled={busy || self} onChange={event => upsert(person, { role: event.target.value }, 'Rol güncellendi.')}>
+                <select className="input ad-role" aria-label={`${person.display_name} rolü`} value={person.role} disabled={busy || self} onChange={event => upsert(person, { role: event.target.value }, event.target.value === 'admin' || person.role === 'admin'
+                  ? 'Rol güncellendi. Yönetim paneline erişim, kişi çıkış yapıp yeniden girince (en geç 1 saat içinde) değişir.' : 'Rol güncellendi.')}>
                   {Object.entries(STAFF_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                 </select>
                 <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy || self} onClick={() => upsert(person, { is_active: !person.is_active }, person.is_active ? 'Erişim kapatıldı.' : 'Erişim açıldı.')}>{person.is_active ? 'Erişimi kapat' : 'Erişimi aç'}</button>

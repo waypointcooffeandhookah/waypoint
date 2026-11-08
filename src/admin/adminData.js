@@ -76,7 +76,7 @@ export const centsToLira = cents => (Number(cents) / 100).toFixed(2).replace('.'
 export const tableQrUrl = (token, origin, base) => `${origin}${base}masa/${token}`
 
 export const POS_ERRORS = {
-  forbidden: 'Bu işlem için yetkiniz yok.', invalid_hours: 'Çalışma saatlerini kontrol edin.', invalid_settings: 'Ayarlar geçersiz.',
+  forbidden: 'Bu işlem için yetkiniz yok.', last_admin: 'Son aktif yöneticinin rolü düşürülemez veya erişimi kapatılamaz. Önce başka birini Yönetici yapın.', invalid_hours: 'Çalışma saatlerini kontrol edin.', invalid_settings: 'Ayarlar geçersiz.',
   table_not_found: 'Masa bulunamadı.', session_closed: 'Oturum zaten kapalı.',
 }
 const DB_ERRORS = { 23505: 'Bu adda bir masa zaten var. Farklı bir ad yazın.', 23514: 'Masa adı 1–40 karakter olmalı.' }
