@@ -65,12 +65,12 @@ Deno.serve(async request => {
       return reply(200, { ok: true })
     }
 
+    // Yalnızca Garson/Mutfak (validate.js). Admin izni (app_metadata) bu fonksiyonda hiç verilmez.
     // Yeni hesap; e-posta zaten kayıtlıysa (ör. Supabase panelinde açılmışsa) şifresine dokunmadan personele bağlanır.
-    const appMetadata = input.role === 'admin' ? { role: 'admin' } : {}
     let userId: string
     let created = false
     const { data: made, error: createError } = await service.auth.admin.createUser({
-      email: input.email, password: input.password, email_confirm: true, app_metadata: appMetadata,
+      email: input.email, password: input.password, email_confirm: true,
     })
     if (made?.user) {
       userId = made.user.id
@@ -81,7 +81,6 @@ Deno.serve(async request => {
       const { data: profile } = await service.from('staff_profiles').select('user_id').eq('user_id', existing.id).maybeSingle()
       if (profile) return reply(409, { error: 'already_staff' })
       userId = existing.id
-      if (input.role === 'admin') await service.auth.admin.updateUserById(userId, { app_metadata: { ...existing.app_metadata, role: 'admin' } })
     } else {
       return reply(400, { error: createError?.code === 'weak_password' ? 'weak_password' : 'auth_failed' })
     }

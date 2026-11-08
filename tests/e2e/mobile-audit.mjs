@@ -79,6 +79,7 @@ const PAGES = [
   { name: 'yonetim-panel', path: '/admin', role: 'admin', ready: `document.querySelector('.ad-stats')` },
   { name: 'yonetim-ciro', path: '/admin/ciro', role: 'admin', ready: `document.querySelector('.ad-revenue-stats')` },
   { name: 'yonetim-masalar', path: '/admin/masalar', role: 'admin', ready: `document.querySelector('.ad-table')` },
+  { name: 'yonetim-personel', path: '/admin/personel', role: 'admin', ready: `document.querySelector('.ad-staff li')` },
   { name: 'yonetim-ayarlar', path: '/admin/ayarlar', role: 'admin', ready: `document.querySelector('.ad-settings')` },
   { name: 'yonetim-menu', path: '/admin/menu', role: 'admin', ready: `document.querySelector('main, .admin-content, input')` },
 ]

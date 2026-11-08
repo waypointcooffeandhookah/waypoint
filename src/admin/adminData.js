@@ -1,6 +1,9 @@
 // Yönetim panelinin saf mantığı (testli). Doğrulamanın asıl sahibi sunucudur.
 export const DAYS = [[1, 'Pazartesi'], [2, 'Salı'], [3, 'Çarşamba'], [4, 'Perşembe'], [5, 'Cuma'], [6, 'Cumartesi'], [0, 'Pazar']]
-export const STAFF_ROLES = { admin: 'Yönetici', manager: 'Müdür', cashier: 'Kasa', waiter: 'Garson', kitchen: 'Mutfak' }
+// Sistemde yalnızca üç rol var; tek Admin. Personel ekranında yalnızca Garson ve Mutfak atanabilir.
+export const STAFF_ROLES = { admin: 'Admin', waiter: 'Garson', kitchen: 'Mutfak' }
+export const ASSIGNABLE_ROLES = ['waiter', 'kitchen']
+export const staffRoleLabel = role => STAFF_ROLES[role] ?? 'Garson'
 export const BLOCK_LABELS = { ordering_closed: 'Sipariş alımı kapalı', outside_hours: 'Çalışma saatleri dışında' }
 
 export function settingsToForm(row) {
@@ -76,7 +79,7 @@ export const centsToLira = cents => (Number(cents) / 100).toFixed(2).replace('.'
 export const tableQrUrl = (token, origin, base) => `${origin}${base}masa/${token}`
 
 export const POS_ERRORS = {
-  forbidden: 'Bu işlem için yetkiniz yok.', last_admin: 'Son aktif yöneticinin rolü düşürülemez veya erişimi kapatılamaz. Önce başka birini Yönetici yapın.', invalid_hours: 'Çalışma saatlerini kontrol edin.', invalid_settings: 'Ayarlar geçersiz.',
+  forbidden: 'Bu işlem için yetkiniz yok.', last_admin: 'Admin hesabının rolü değiştirilemez ve erişimi kapatılamaz.', role_not_allowed: 'Personele yalnızca Garson veya Mutfak rolü verilebilir.', invalid_name: 'Ad 1–60 karakter olmalı.', invalid_hours: 'Çalışma saatlerini kontrol edin.', invalid_settings: 'Ayarlar geçersiz.',
   table_not_found: 'Masa bulunamadı.', session_closed: 'Oturum zaten kapalı.',
 }
 const DB_ERRORS = { 23505: 'Bu adda bir masa zaten var. Farklı bir ad yazın.', 23514: 'Masa adı 1–40 karakter olmalı.' }

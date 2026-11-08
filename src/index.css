@@ -271,3 +271,9 @@ textarea.input { resize: vertical; min-height: 80px; }
 .app-crash h1 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.4rem; color: #f8f6f2; }
 .app-crash p { margin: 0; max-width: 360px; font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); }
 .app-crash .btn { min-height: 48px; padding: 0 22px; }
+
+/* Açılır listeler (select): koyu temada seçenekler okunur. Tarayıcının kendi listesi koyu çizilir; seçili satır turkuaz. */
+select { color-scheme: dark; }
+select option, select optgroup { background-color: #1c1714; color: #f3eee8; }
+select option:checked { background-color: #1a7b76; color: #ffffff; }
+select option:disabled { color: #8a8077; }

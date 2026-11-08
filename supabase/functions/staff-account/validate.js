@@ -1,5 +1,6 @@
 // Personel hesabı isteklerinin doğrulaması (Edge Function ve Node testleri ortak kullanır).
-export const STAFF_ROLE_KEYS = ['admin', 'manager', 'cashier', 'waiter', 'kitchen']
+// Panelden yalnızca Garson ve Mutfak hesabı açılır; sistemde tek Admin vardır.
+export const STAFF_ROLE_KEYS = ['waiter', 'kitchen']
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

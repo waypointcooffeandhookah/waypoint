@@ -160,3 +160,16 @@
   .ad-print-card strong { font: 700 18pt 'Playfair Display', serif; color: #000; }
   .ad-print-card span { font: 10pt 'Inter', sans-serif; color: #333; }
 }
+
+/* Personel rolü: Garson | Mutfak (iki düğmeli seçici). Koyu zeminde açık yazı; seçili turkuaz, üzerine gelince belirgin. */
+.ad-role-picker { display: inline-flex; flex: 1 1 200px; min-width: 0; padding: 4px; gap: 4px; border-radius: 14px; background: #120f0d; border: 1px solid rgba(255, 255, 255, 0.14); }
+.ad-role-picker button {
+  flex: 1 1 0; min-height: var(--pos-touch, 44px); padding: 8px 14px; border: 0; border-radius: 10px;
+  background: transparent; color: #d9d0c6; font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ad-role-picker button:hover:not(:disabled):not(.active) { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+.ad-role-picker button.active { background: #1a7b76; color: #ffffff; box-shadow: 0 0 0 1px rgba(91, 231, 196, 0.55) inset; }
+.ad-role-picker button:focus-visible { outline: 2px solid var(--pos-teal, #5be7c4); outline-offset: 2px; }
+.ad-role-picker button:disabled { cursor: default; opacity: 0.55; }
+.ad-field .ad-role-picker { display: flex; width: 100%; }

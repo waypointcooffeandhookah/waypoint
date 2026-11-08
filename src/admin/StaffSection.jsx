@@ -1,12 +1,35 @@
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../supabaseClient'
-import { STAFF_ROLES, callStaffAccount, posErrorMessage, staffAccountMessage } from './adminData'
+import { ASSIGNABLE_ROLES, STAFF_ROLES, callStaffAccount, posErrorMessage, staffAccountMessage } from './adminData'
 
 const EMPTY = { name: '', email: '', password: '', role: 'waiter' }
 
 // Hesap açma ve şifre değiştirme sunucudaki staff-account fonksiyonuyla yapılır (gizli anahtar tarayıcıya gelmez);
 // rol ve erişim upsert_staff_profile ile yönetilir.
+// Garson | Mutfak seçici: açılır liste yerine iki düğme (koyu temada net okunur, telefonda tek dokunuş, klavyeyle ok tuşları).
+function RolePicker({ value, onChange, disabled, label, name }) {
+  const pick = (role, event) => { if (role !== value) onChange(role); event?.currentTarget?.focus() }
+  const onKeyDown = event => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+    event.preventDefault()
+    const index = ASSIGNABLE_ROLES.indexOf(value)
+    const next = ASSIGNABLE_ROLES[(index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1) + ASSIGNABLE_ROLES.length) % ASSIGNABLE_ROLES.length]
+    onChange(next)
+    event.currentTarget.parentElement?.querySelector(`[data-role="${next}"]`)?.focus()
+  }
+  return (
+    <div className="ad-role-picker" role="radiogroup" aria-label={label} data-name={name}>
+      {ASSIGNABLE_ROLES.map(role => (
+        <button key={role} type="button" role="radio" data-role={role} aria-checked={value === role} tabIndex={value === role || !ASSIGNABLE_ROLES.includes(value) ? 0 : -1}
+          className={value === role ? 'active' : ''} disabled={disabled} onClick={event => pick(role, event)} onKeyDown={onKeyDown}>
+          {STAFF_ROLES[role]}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function StaffSection() {
   const [staff, setStaff] = useState(null)
   const [me, setMe] = useState(null)
@@ -75,19 +98,19 @@ export default function StaffSection() {
         {staff?.map(person => {
           const self = person.user_id === me
           const editing = passwordFor?.userId === person.user_id
+          const isAdmin = person.role === 'admin'
           return (
             <li key={person.user_id} className={`ad-person${person.is_active ? '' : ' inactive'}`} data-person={person.display_name}>
               <div className="ad-order-head">
                 <strong>{person.display_name}</strong>
+                {isAdmin && <span className="ad-channel-tag">Admin</span>}
                 {self && <span className="ad-channel-tag busy">Siz</span>}
                 {!person.is_active && <span className="ad-channel-tag">Pasif</span>}
               </div>
               <div className="ad-row-actions">
-                <select className="input ad-role" aria-label={`${person.display_name} rolü`} value={person.role} disabled={busy || self} onChange={event => upsert(person, { role: event.target.value }, event.target.value === 'admin' || person.role === 'admin'
-                  ? 'Rol güncellendi. Yönetim paneline erişim, kişi çıkış yapıp yeniden girince (en geç 1 saat içinde) değişir.' : 'Rol güncellendi.')}>
-                  {Object.entries(STAFF_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                </select>
-                <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy || self} onClick={() => upsert(person, { is_active: !person.is_active }, person.is_active ? 'Erişim kapatıldı.' : 'Erişim açıldı.')}>{person.is_active ? 'Erişimi kapat' : 'Erişimi aç'}</button>
+                {!isAdmin && <RolePicker value={person.role} disabled={busy} label={`${person.display_name} rolü`} name={person.display_name}
+                      onChange={role => upsert(person, { role }, `${person.display_name}: ${STAFF_ROLES[role]}`)} />}
+                {!isAdmin && <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy || self} onClick={() => upsert(person, { is_active: !person.is_active }, person.is_active ? 'Erişim kapatıldı.' : 'Erişim açıldı.')}>{person.is_active ? 'Erişimi kapat' : 'Erişimi aç'}</button>}
                 <button type="button" className="pos-btn pos-btn-ghost ad-person-toggle" disabled={busy} aria-expanded={editing}
                   onClick={() => setPasswordFor(editing ? null : { userId: person.user_id, value: '' })}>Şifre değiştir</button>
               </div>
@@ -105,7 +128,7 @@ export default function StaffSection() {
       </ul>
       <section className="ad-card">
         <div className="ad-card-head"><h2>Personel ekle</h2></div>
-        <p className="pos-muted">Hesap burada açılır; kişi bu e-posta ve şifreyle garson/mutfak ekranına girer. Şifreyi kişiye kendiniz iletin; gerekirse "Şifre değiştir" ile yenileyin. Yönetici rolü bu panele de giriş verir.</p>
+        <p className="pos-muted">Hesap burada açılır; kişi bu e-posta ve şifreyle garson/mutfak ekranına girer. Şifreyi kişiye kendiniz iletin; gerekirse "Şifre değiştir" ile yenileyin. Personel Garson veya Mutfak olabilir; sistemde tek Admin hesabı vardır.</p>
         <form className="ad-zone-form" onSubmit={add}>
           <div className="ad-field"><label className="input-label" htmlFor="ad-staff-name">Ad</label>
             <input id="ad-staff-name" className="input" maxLength={60} autoComplete="off" placeholder="Örn. Ayşe" value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} /></div>
@@ -113,10 +136,8 @@ export default function StaffSection() {
             <input id="ad-staff-email" className="input" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" placeholder="ayse@ornek.com" required value={draft.email} onChange={event => setDraft({ ...draft, email: event.target.value })} /></div>
           <div className="ad-field"><label className="input-label" htmlFor="ad-staff-password">Şifre</label>
             <input id="ad-staff-password" className="input" type="text" autoComplete="new-password" autoCapitalize="none" minLength={8} maxLength={72} placeholder="En az 8 karakter" required value={draft.password} onChange={event => setDraft({ ...draft, password: event.target.value })} /></div>
-          <div className="ad-field"><label className="input-label" htmlFor="ad-staff-role">Rol</label>
-            <select id="ad-staff-role" className="input" value={draft.role} onChange={event => setDraft({ ...draft, role: event.target.value })}>
-              {Object.entries(STAFF_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
+          <div className="ad-field"><span className="input-label" id="ad-staff-role">Rol</span>
+            <RolePicker value={draft.role} disabled={busy} label="Yeni personelin rolü" onChange={role => setDraft({ ...draft, role })} />
           </div>
           <button type="submit" className="pos-btn pos-btn-primary" disabled={busy}>{busy ? 'Hesap açılıyor…' : 'Hesap aç ve ekle'}</button>
         </form>

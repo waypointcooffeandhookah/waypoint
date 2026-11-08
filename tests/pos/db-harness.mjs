@@ -30,7 +30,7 @@ const AUTH_STUB = `
 export const MIGRATION = 'supabase/migrations/20261030120000_pos_foundation.sql'
 export const readMigration = () => read(MIGRATION)
 
-export async function createDb() {
+export async function createDb({ simpleRoles = false } = {}) {
   const db = new PGlite()
   await db.exec(AUTH_STUB)
   await db.exec(read('supabase_setup.sql'))
@@ -45,6 +45,8 @@ export async function createDb() {
   await db.exec(read('supabase/migrations/20261108090000_pos_session_label.sql'))
   await db.exec(read('supabase/migrations/20261109090000_menu_sort_order.sql'))
   await db.exec(read('supabase/migrations/20261110090000_staff_admin_sync.sql'))
+  // Rol sadeleştirme (yalnızca admin/waiter/kitchen) eski Müdür/Kasa testlerini bozmasın diye isteğe bağlı yüklenir.
+  if (simpleRoles) await db.exec(read('supabase/migrations/20261111090000_staff_roles_simplify.sql'))
   // Mevcut kurulum betiği menü tablolarını Supabase varsayılan yetkileriyle bıraktığı için
   // testte de okumayı açıyoruz (supabase_security.sql ile aynı).
   await db.exec('grant select on public.categories, public.menu_items to anon, authenticated')
