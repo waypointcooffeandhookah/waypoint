@@ -95,7 +95,7 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
       return TABLES.map(table => {
         const bill = state.bills[table.id]
         return {
-          ...table, occupied: Boolean(bill), openedAt: bill?.openedAt ?? null,
+          ...table, guestLabel: bill?.guestLabel ?? null, occupied: Boolean(bill), openedAt: bill?.openedAt ?? null,
           readyCount: bill?.orders.filter(order => order.status === 'ready').length ?? 0,
           ...(bill ? summarize(bill) : { totalCents: 0, orderCount: 0 }),
         }
@@ -122,6 +122,19 @@ export function createDemoBackend({ catalogItems = [], latencyMs = 450, now = ()
         bill.payments.push({ id: `demo-odeme-${bill.payments.length + 1}`, key, amountCents, method, createdAt: now() })
         bill.paidCents += amountCents
         return { state: 'confirmed' }
+      })
+    },
+
+    async setTableLabel(tableId, label) {
+      await wait(latencyMs / 3)
+      const clean = String(label ?? '').replace(/\s+/g, ' ').trim() || null
+      if (clean && clean.length > 40) return { state: 'rejected', code: 'invalid_label' }
+      return transact(state => {
+        if (!TABLES.some(table => table.id === tableId)) return { state: 'rejected', code: 'table_not_found' }
+        if (!state.bills[tableId] && !clean) return { state: 'confirmed', order: { guest_label: null } }
+        state.bills[tableId] ??= { billId: `demo-adisyon-${tableId}`, openedAt: now(), orders: [], paidCents: 0, payments: [] }
+        state.bills[tableId].guestLabel = clean
+        return { state: 'confirmed', order: { guest_label: clean } }
       })
     },
 

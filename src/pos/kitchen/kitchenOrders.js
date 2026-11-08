@@ -35,6 +35,8 @@ export function mapKitchenOrder(row) {
     note: row.note,
     tableId: row.table_id,
     tableLabel: FULFILLMENT_LABELS[row.fulfillment_type] ?? row.restaurant_tables?.label ?? '—',
+    // Garsonun verdiği geçici adisyon adı (ör. "Ahmet Bey"); paket/kuryede yok.
+    guestLabel: (Array.isArray(row.table_sessions) ? row.table_sessions[0] : row.table_sessions)?.guest_label ?? null,
     items: [...(row.order_items ?? [])]
       .sort((a, b) => a.position - b.position)
       .map(item => ({ name: item.item_name, quantity: item.quantity, note: item.note })),

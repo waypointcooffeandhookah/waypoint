@@ -26,19 +26,22 @@ export function createLiveBackend(supabase) {
     mode: 'live',
 
     async listTables() {
-      const [tables, bills, ready] = await Promise.all([
+      const [tables, bills, ready, sessions] = await Promise.all([
         supabase.from('restaurant_tables').select('id, label, sort_order').eq('is_active', true).order('sort_order').order('label'),
         supabase.from('bill_summaries').select('table_id, total_cents, order_count').eq('status', 'open'),
         supabase.from('orders').select('table_id').eq('status', 'ready'),
+        supabase.from('table_sessions').select('table_id, guest_label').eq('status', 'open'),
       ])
       if (tables.error) throw tables.error
       if (bills.error) throw bills.error
       if (ready.error) throw ready.error
       const open = new Map(bills.data.map(bill => [bill.table_id, bill]))
+      // Ad sütunu henüz yoksa (migration öncesi) masalar yine listelenir.
+      const labels = new Map((sessions.error ? [] : sessions.data).map(row => [row.table_id, row.guest_label]))
       return tables.data.map(table => {
         const bill = open.get(table.id)
         return {
-          id: table.id, label: table.label, occupied: Boolean(bill), totalCents: Number(bill?.total_cents ?? 0), orderCount: bill?.order_count ?? 0,
+          id: table.id, label: table.label, guestLabel: labels.get(table.id) ?? null, occupied: Boolean(bill), totalCents: Number(bill?.total_cents ?? 0), orderCount: bill?.order_count ?? 0,
           readyCount: ready.data.filter(order => order.table_id === table.id).length,
         }
       })
@@ -73,6 +76,8 @@ export function createLiveBackend(supabase) {
 
     // Masa ödemesi (record_payment): aynı anahtarla tekrar çift kayıt üretmez; fazla ödemeyi sunucu reddeder.
     recordBillPayment: async (billId, amountCents, method, key) => statusResult(await recordPayment(billId, amountCents, method, key)),
+    // Geçici adisyon adı: boş masaya verilirse oturum açılır; boş ad kaldırır. Hesap kapanınca silinir.
+    setTableLabel: async (tableId, label) => statusResult(await supabase.rpc('set_table_session_label', { p_table_id: tableId, p_label: label ?? '' })),
     // Adisyonu kapatır: servis edilmemiş sipariş veya kalan bakiye varsa sunucu reddeder (zorla kapatma yalnızca yönetimde).
     closeBill: async sessionId => statusResult(await closeTableSession(sessionId)),
 
@@ -83,7 +88,7 @@ export function createLiveBackend(supabase) {
     async listKitchenOrders() {
       const since = new Date(Date.now() - SERVED_WINDOW_MS).toISOString()
       const { data, error } = await supabase.from('orders')
-        .select('id, order_number, source, fulfillment_type, status, created_at, updated_at, note, table_id, restaurant_tables(label), order_items(position, item_name, quantity, note)')
+        .select('id, order_number, source, fulfillment_type, status, created_at, updated_at, note, table_id, restaurant_tables(label), table_sessions(guest_label), order_items(position, item_name, quantity, note)')
         .or(`status.in.(new,preparing,ready),and(status.eq.served,updated_at.gte.${since})`)
         .order('created_at').limit(200)
       if (error) throw error

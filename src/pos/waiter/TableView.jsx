@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Receipt, ShoppingBag, UtensilsCrossed } from 'lucide-react'
+import { ArrowLeft, Check, Pencil, Receipt, ShoppingBag, UtensilsCrossed, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createSubmission, savePending, clearPending } from '../orderSubmission'
 import { cartCount, emptyCart, toOrderPayloadLines } from '../cart'
@@ -151,6 +151,19 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
 
   const openPanel = name => { setPanel(name); setSheetOpen(true) }
 
+  // Geçici adisyon adı (ör. "Ahmet Bey"): masanın kalıcı adı ve QR değişmez; hesap kapanınca silinir.
+  const [naming, setNaming] = useState(null) // düzenlenen metin
+  const [savingName, setSavingName] = useState(false)
+  async function saveName(event) {
+    event?.preventDefault()
+    if (savingName || naming === null) return
+    setSavingName(true)
+    let result
+    try { result = await backend.setTableLabel(tableId, naming) } catch { result = { state: 'error' } } finally { setSavingName(false) }
+    if (result.state === 'confirmed') { setNaming(null); loadBill() }
+    else toast.error(result.state === 'error' ? 'Bağlantı sorunu: ad kaydedilemedi.' : statusErrorMessage(result.code))
+  }
+
   // Bildirimden gelindiyse adisyon doğrudan açılır.
   const location = useLocation()
   useEffect(() => {
@@ -167,6 +180,18 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
         <button type="button" className="pos-icon-btn" onClick={() => navigate('..')} aria-label="Masalara dön"><ArrowLeft size={20} /></button>
         <div className="wt-table-bar-title">
           <h1 className="pos-title">{table?.label ?? '…'}</h1>
+          {backend.setTableLabel && (naming === null ? (
+            <button type="button" className="wt-guest-btn" onClick={() => setNaming(table?.guestLabel ?? '')} disabled={!table}>
+              <Pencil size={12} aria-hidden="true" />{table?.guestLabel ? <strong>{table.guestLabel}</strong> : 'Ad / not ekle'}
+            </button>
+          ) : (
+            <form className="wt-guest-form" onSubmit={saveName}>
+              <input className="input" value={naming} maxLength={40} autoFocus placeholder="Örn. Ahmet Bey, Doğum günü" aria-label="Adisyon adı"
+                onChange={event => setNaming(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') setNaming(null) }} />
+              <button type="submit" className="pos-icon-btn" disabled={savingName} aria-label="Adı kaydet"><Check size={16} /></button>
+              <button type="button" className="pos-icon-btn" onClick={() => setNaming(null)} aria-label="Vazgeç"><X size={16} /></button>
+            </form>
+          ))}
           <span className="pos-muted">{bill ? `Adisyon ${formatCents(bill.totalCents)} · ${bill.orderCount} sipariş` : 'Açık adisyon yok'}</span>
         </div>
         <button type="button" className="pos-btn pos-btn-ghost wt-bill-btn" onClick={() => openPanel('bill')}>

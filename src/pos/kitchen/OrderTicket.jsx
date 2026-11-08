@@ -20,7 +20,7 @@ function OrderTicket({ order, now, busy, onAdvance }) {
   return (
     <li className={`kt-ticket kt-ticket-${order.status} kt-from-${order.source} kt-type-${fulfillment}${late ? ' late' : ''}`}>
       <div className="kt-ticket-head">
-        <h3 className="kt-ticket-table">{order.tableLabel}</h3>
+        <h3 className="kt-ticket-table">{order.tableLabel}{order.guestLabel && <small className="kt-guest">{order.guestLabel}</small>}</h3>
         {online ? (
           <span className="pos-source kt-source-online">
             {fulfillment === 'pickup' ? <ShoppingBag size={13} aria-hidden="true" /> : <Bike size={13} aria-hidden="true" />}

@@ -141,3 +141,5 @@
 .kt-type-delivery .kt-ticket-table { color: #f5d07a; font-size: 1.02rem; }
 .kt-source-online { color: var(--cream-gold); border: 1px solid rgba(255, 255, 255, 0.16); }
 .kt-handoff-note { margin: 8px 0 0; font-size: 0.8rem; font-weight: 700; color: var(--cream-gold); }
+
+.kt-guest { display: block; margin-top: 2px; font: 600 0.78rem 'Inter', sans-serif; color: var(--cream-gold); letter-spacing: 0; }

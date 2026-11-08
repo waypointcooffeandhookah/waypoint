@@ -68,6 +68,7 @@ export default function TableGrid({ backend, carts }) {
                 </span>
                 {table.readyCount > 0 && <span className="wt-table-ready"><BellRing size={12} aria-hidden="true" />{table.readyCount} sipariş hazır</span>}
                 <span className="wt-table-label">{table.label}</span>
+                {table.guestLabel && <span className="wt-table-guest">{table.guestLabel}</span>}
                 <span className="wt-table-meta">
                   {table.occupied ? <><strong>{formatCents(table.totalCents)}</strong> · {table.orderCount} sipariş</> : 'Sipariş yok'}
                 </span>

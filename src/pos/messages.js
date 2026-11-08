@@ -49,6 +49,8 @@ const STATUS_ERRORS = {
   balance_due: 'Kalan bakiye ödenmeden hesap kapatılamaz.',
   session_closed: 'Bu masa zaten kapatılmış.',
   session_not_found: 'Masa oturumu bulunamadı. Liste yenilendi.',
+  invalid_label: 'Ad en fazla 40 karakter olabilir.',
+  table_not_found: 'Masa bulunamadı veya kullanım dışı.',
 }
 
 export const statusErrorMessage = code => STATUS_ERRORS[code] ?? 'Durum güncellenemedi. Bağlantınızı kontrol edip tekrar deneyin.'
