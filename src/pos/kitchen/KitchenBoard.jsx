@@ -69,10 +69,15 @@ export default function KitchenBoard({ backend }) {
 
   const advance = useCallback(async (order, status) => {
     setBusy(current => new Set(current).add(order.id))
-    const result = await backend.setOrderStatus(order.id, status)
-    if (result.state !== 'confirmed') toast.error(statusErrorMessage(result.code))
-    await load()
-    setBusy(current => { const next = new Set(current); next.delete(order.id); return next })
+    try {
+      const result = await backend.setOrderStatus(order.id, status)
+      if (result.state !== 'confirmed') toast.error(statusErrorMessage(result.code))
+    } catch {
+      toast.error(statusErrorMessage()) // bağlantı hatası: düğme kilitli kalmaz, liste yenilenir
+    } finally {
+      setBusy(current => { const next = new Set(current); next.delete(order.id); return next })
+      load()
+    }
   }, [backend, load])
 
   const groups = useMemo(() => groupByStatus(orders ?? []), [orders])

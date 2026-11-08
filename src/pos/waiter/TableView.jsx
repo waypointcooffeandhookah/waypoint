@@ -50,8 +50,10 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
   useOrderSync(backend, loadBill, REFRESH_MS)
 
   const markServed = useCallback(async order => {
-    const result = await backend.setOrderStatus(order.id, 'served')
-    if (result.state !== 'confirmed') toast.error(statusErrorMessage(result.code))
+    try {
+      const result = await backend.setOrderStatus(order.id, 'served')
+      if (result.state !== 'confirmed') toast.error(statusErrorMessage(result.code))
+    } catch { toast.error(statusErrorMessage()) }
     loadBill()
   }, [backend, loadBill])
 
@@ -66,8 +68,8 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
     const key = previous && previous.billId === bill.billId && previous.amountCents === amountCents && previous.method === method ? previous.key : randomUUID()
     pendingPayment.current = { billId: bill.billId, amountCents, method, key }
     setPaying(method)
-    const result = await backend.recordBillPayment(bill.billId, amountCents, method, key)
-    setPaying(null)
+    let result
+    try { result = await backend.recordBillPayment(bill.billId, amountCents, method, key) } catch { result = { state: 'error' } } finally { setPaying(null) }
     if (result.state === 'error') { toast.error('Bağlantı sorunu: ödeme doğrulanamadı. Aynı tutarla tekrar deneyin; çift kayıt oluşmaz.'); return }
     pendingPayment.current = null
     if (result.state === 'confirmed') { toast.success(`${formatCents(amountCents)} ${METHOD_LABELS[method].toLowerCase()} alındı`); done?.() }
@@ -79,8 +81,8 @@ export default function TableView({ backend, catalog, carts, dispatchCart }) {
     if (!bill?.sessionId || closing) return
     if (!window.confirm(`${table?.label ?? 'Masa'} hesabı kapatılsın mı? Masa boşalır; yeni sipariş yeni adisyon açar.`)) return
     setClosing(true)
-    const result = await backend.closeBill(bill.sessionId)
-    setClosing(false)
+    let result
+    try { result = await backend.closeBill(bill.sessionId) } catch { result = { state: 'error' } } finally { setClosing(false) }
     if (result.state === 'confirmed') {
       toast.success(`${table?.label ?? 'Masa'} kapatıldı`)
       setSheetOpen(false)

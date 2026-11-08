@@ -58,8 +58,8 @@ export default function TablesSection() {
 
   async function run(action, success) {
     setBusy(true)
-    const { error: failure } = await action()
-    setBusy(false)
+    let failure
+    try { ({ error: failure } = await action()) } catch (error) { failure = error } finally { setBusy(false) }
     if (failure) toast.error(posErrorMessage(failure))
     else if (success) toast.success(success)
     await load()

@@ -17,7 +17,15 @@ export function createChime() {
       context.resume?.()
     },
     play() {
-      if (context?.state !== 'running') return
+      if (!context) return
+      // iOS/Android ekran kararınca sesi askıya alır ("suspended"/"interrupted"); bir kez açılmışsa yeniden uyandırılır.
+      if (context.state !== 'running') {
+        try { context.resume?.().then(() => { if (context.state === 'running') try { this.tone() } catch { /* yok sayılır */ } }, () => {}) } catch { /* yok sayılır */ }
+        return
+      }
+      try { this.tone() } catch { /* ses çalınamazsa ekran etkilenmez */ }
+    },
+    tone() {
       ;[880, 1175].forEach((frequency, index) => {
         const start = context.currentTime + index * 0.18
         const oscillator = context.createOscillator()

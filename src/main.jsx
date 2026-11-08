@@ -4,10 +4,14 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { CONFIG_ERROR } from './config'
+import { reloadOnce } from './utils/chunkReload'
 import './index.css'
 
 // Hem yerel ortamda (localhost) hem de GitHub Pages (/waypoint) ortamında kusursuz çalışması için dinamik basename
 const basename = window.location.pathname.startsWith('/waypoint') ? '/waypoint' : ''
+
+// Yeni sürümden sonra eski parça dosyası yüklenemezse (Vite) sayfa bir kez yenilenir; beyaz ekran kalmaz.
+window.addEventListener('vite:preloadError', event => { if (reloadOnce()) event.preventDefault() })
 
 // Staging ayarı hatalıysa uygulama hiç açılmaz: ne sipariş yazılır ne de başka projeye bağlanılır.
 const root = ReactDOM.createRoot(document.getElementById('root'))

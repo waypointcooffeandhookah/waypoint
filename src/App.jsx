@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import AppErrorBoundary from './AppErrorBoundary'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { isAdmin } from './utils/adminAccess'
@@ -27,7 +28,9 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
   return (
+    <AppErrorBoundary resetKey={pathname}>
     <Suspense fallback={<div className="loading-screen" role="status">Yükleniyor…</div>}>
     <Routes>
       <Route path="/" element={<GeneralMenuRoute />} />
@@ -43,6 +46,7 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
+    </AppErrorBoundary>
   )
 }
 
